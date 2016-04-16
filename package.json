@@ -1,0 +1,28 @@
+{
+  "name": "which-floor-are-you-going-to",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://WhaleWatching@github.com/SerotoninPharmaceuticals/WhichFloorAreYouGoingTo.git"
+  },
+  "keywords": [
+    "game"
+  ],
+  "author": "Edward Cheng",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/SerotoninPharmaceuticals/WhichFloorAreYouGoingTo/issues"
+  },
+  "homepage": "https://github.com/SerotoninPharmaceuticals/WhichFloorAreYouGoingTo#readme",
+  "devDependencies": {
+    "express": "^4.13.4"
+  },
+  "dependencies": {
+    "phaser": "^2.4.6"
+  }
+}
