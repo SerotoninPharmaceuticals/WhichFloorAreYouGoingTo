@@ -52,9 +52,9 @@ class ElevatorWorkshop extends Phaser.Group {
  * ElevatorController
  */
 class ElevatorController {
-  indicator: ElevatorIndicator
+  indicator: ElevatorIndicatorScene
   panel: ElevatorPanel
-  constructor(indicator: ElevatorIndicator, panel: ElevatorPanel) {
+  constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel) {
     this.indicator = indicator
     this.panel = panel
   }
@@ -112,12 +112,22 @@ class ComicWindow extends Phaser.Group {
 }
 
 /**
- * ElevatorIndicator
+ * ElevatorIndicatorScene
  */
-class ElevatorIndicator extends ComicWindow {
+class ElevatorIndicatorScene extends ComicWindow {
   constructor(game: Phaser.Game) {
     super(game)
     this.backgroundColor = 0x7c858a
+  }
+}
+
+/**
+ * ElevatorPanelScene
+ */
+class ElevatorPanelScene extends ComicWindow  {
+  elevatorPanel: ElevatorPanel
+  constructor(game: Phaser.Game) {
+    super(game)
   }
 }
 
@@ -150,27 +160,27 @@ class WhichFloor {
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
   }
   
-  cw_elevator_main: ComicWindow
-  cw_elevator_indicator: ElevatorIndicator
-  cw_elevator_phone: ComicWindow
-  cw_mouth: ComicWindow
-  cw_elevator_panel: ComicWindow
+  scene_elevatorMain: ComicWindow
+  scene_elevatorIndicator: ElevatorIndicatorScene
+  scene_elevatorPhone: ComicWindow
+  scene_mouth: ComicWindow
+  scene_elevatorPanel: ElevatorPanelScene
 
   create() {
-    this.cw_elevator_main = this.game.world.add(new ComicWindow(this.game))
-    this.cw_elevator_main.origin = new Origin(40, 25, 400, 213)
+    this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game))
+    this.scene_elevatorMain.origin = new Origin(40, 25, 400, 213)
     
-    this.cw_elevator_indicator = this.game.world.add(new ElevatorIndicator(this.game))
-    this.cw_elevator_indicator.origin = new Origin(40, 250, 30, 230)
+    this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game))
+    this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230)
     
-    this.cw_elevator_phone = this.game.world.add(new ComicWindow(this.game))
-    this.cw_elevator_phone.origin = new Origin(80, 250, 234, 230)
+    this.scene_elevatorPhone = this.game.world.add(new ComicWindow(this.game))
+    this.scene_elevatorPhone.origin = new Origin(80, 250, 234, 230)
     
-    this.cw_mouth = this.game.world.add(new ComicWindow(this.game))
-    this.cw_mouth.origin = new Origin(323, 250, 117, 76)
+    this.scene_mouth = this.game.world.add(new ComicWindow(this.game))
+    this.scene_mouth.origin = new Origin(323, 250, 117, 76)
     
-    this.cw_elevator_panel = this.game.world.add(new ComicWindow(this.game))
-    this.cw_elevator_panel.origin = new Origin(450, 25, 313, 457)
+    this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game))
+    this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457)
   }
   
   render() {
