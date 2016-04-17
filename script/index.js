@@ -20,36 +20,11 @@ class Origin {
     }
 }
 /**
- * ElevatorHumanNotMachine
- */
-class ElevatorHumanNotMachine extends Phaser.Sprite {
-    constructor(game, x, y) {
-        super(game, x, y, ElevatorHumanNotMachine.asset_key);
-    }
-}
-ElevatorHumanNotMachine.asset_key = 'elevator-human';
-/**
- * ElevatorHumanNotMachine
- */
-class ElevatorWorkshop extends Phaser.Group {
-    constructor(game) {
-        super(game, game.world, 'ElevatorWorkshop');
-        this.add(new ElevatorHumanNotMachine(game, 10, 10));
-    }
-}
-/**
- * ElevatorController
- */
-class ElevatorController {
-    constructor() {
-    }
-}
-/**
  * ComicWindow
  */
 class ComicWindow extends Phaser.Group {
-    constructor(game) {
-        super(game, game.world, 'ComicWindow');
+    constructor(game, name = 'ComicWindow') {
+        super(game, game.world, name);
         this.enablebackground = true;
         this._backgroundColor = 0xffffff;
         this.maskGraphics = game.add.graphics(0, 0);
@@ -82,12 +57,56 @@ class ComicWindow extends Phaser.Group {
     }
 }
 /**
- * ElevatorIndicator
+ * ElevatorHumanNotMachine
  */
-class ElevatorIndicator extends ComicWindow {
+class ElevatorHumanNotMachine extends Phaser.Sprite {
+    constructor(game, x, y) {
+        super(game, x, y, ElevatorHumanNotMachine.asset_key);
+    }
+}
+ElevatorHumanNotMachine.asset_key = 'elevator-human';
+/**
+ * ElevatorHumanScene
+ */
+class ElevatorHumanScene extends ComicWindow {
     constructor(game) {
-        super(game);
+        super(game, 'ElevatorHumanScene');
+        this.add(new ElevatorHumanNotMachine(game, 10, 10));
+    }
+}
+/**
+ * ElevatorController
+ */
+class ElevatorController {
+    constructor(indicator, panel) {
+        this.indicator = indicator;
+        this.panel = panel;
+    }
+}
+/**
+ * ElevatorIndicatorScene
+ */
+class ElevatorIndicatorScene extends ComicWindow {
+    constructor(game) {
+        super(game, 'ElevatorIndicatorScene');
         this.backgroundColor = 0x7c858a;
+    }
+}
+/**
+ * ElevatorPanelScene
+ */
+class ElevatorPanelScene extends ComicWindow {
+    constructor(game) {
+        super(game, 'ElevatorPanelScene');
+    }
+}
+/**
+ * ElevatorPanel
+ */
+class ElevatorPanel extends Phaser.Group {
+    constructor(game, parent) {
+        super(game, parent, 'ElevatorPanel');
+        this.controlSingal = new Phaser.Signal();
     }
 }
 /**
@@ -104,16 +123,16 @@ class WhichFloor {
         this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'));
     }
     create() {
-        this.cw_elevator_main = this.game.world.add(new ComicWindow(this.game));
-        this.cw_elevator_main.origin = new Origin(40, 25, 400, 213);
-        this.cw_elevator_indicator = this.game.world.add(new ElevatorIndicator(this.game));
-        this.cw_elevator_indicator.origin = new Origin(40, 250, 30, 230);
-        this.cw_elevator_phone = this.game.world.add(new ComicWindow(this.game));
-        this.cw_elevator_phone.origin = new Origin(80, 250, 234, 230);
-        this.cw_mouth = this.game.world.add(new ComicWindow(this.game));
-        this.cw_mouth.origin = new Origin(323, 250, 117, 76);
-        this.cw_elevator_panel = this.game.world.add(new ComicWindow(this.game));
-        this.cw_elevator_panel.origin = new Origin(450, 25, 313, 457);
+        this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game));
+        this.scene_elevatorMain.origin = new Origin(40, 25, 400, 213);
+        this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game));
+        this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230);
+        this.scene_elevatorPhone = this.game.world.add(new ComicWindow(this.game));
+        this.scene_elevatorPhone.origin = new Origin(80, 250, 234, 230);
+        this.scene_mouth = this.game.world.add(new ComicWindow(this.game));
+        this.scene_mouth.origin = new Origin(323, 250, 117, 76);
+        this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game));
+        this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457);
     }
     render() {
     }

@@ -29,38 +29,6 @@ class Origin {
 }
 
 /**
- * ElevatorHumanNotMachine 
- */
-class ElevatorHumanNotMachine  extends Phaser.Sprite {
-  static asset_key = 'elevator-human'
-  constructor(game: Phaser.Game, x: number, y: number) {
-    super(game, x, y, ElevatorHumanNotMachine.asset_key)
-  }
-}
-
-/**
- * ElevatorHumanNotMachine
- */
-class ElevatorWorkshop extends Phaser.Group {
-  constructor(game: Phaser.Game) {
-    super(game, game.world, 'ElevatorWorkshop')
-    this.add(new ElevatorHumanNotMachine(game, 10, 10))
-  }
-}
-
-/**
- * ElevatorController
- */
-class ElevatorController {
-  indicator: ElevatorIndicatorScene
-  panel: ElevatorPanel
-  constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel) {
-    this.indicator = indicator
-    this.panel = panel
-  }
-}
-
-/**
  * ComicWindow
  */
 class ComicWindow extends Phaser.Group {
@@ -103,11 +71,43 @@ class ComicWindow extends Phaser.Group {
   }
   
   
-  constructor(game: Phaser.Game) {
-    super(game, game.world, 'ComicWindow')
+  constructor(game: Phaser.Game, name :string = 'ComicWindow') {
+    super(game, game.world, name)
     
     this.maskGraphics = game.add.graphics(0, 0)
     this.backgroundGraphics = this.add(new Phaser.Graphics(game, 0, 0))
+  }
+}
+
+/**
+ * ElevatorHumanNotMachine 
+ */
+class ElevatorHumanNotMachine  extends Phaser.Sprite {
+  static asset_key = 'elevator-human'
+  constructor(game: Phaser.Game, x: number, y: number) {
+    super(game, x, y, ElevatorHumanNotMachine.asset_key)
+  }
+}
+
+/**
+ * ElevatorHumanScene
+ */
+class ElevatorHumanScene extends ComicWindow {
+  constructor(game: Phaser.Game) {
+    super(game, 'ElevatorHumanScene')
+    this.add(new ElevatorHumanNotMachine(game, 10, 10))
+  }
+}
+
+/**
+ * ElevatorController
+ */
+class ElevatorController {
+  indicator: ElevatorIndicatorScene
+  panel: ElevatorPanel
+  constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel) {
+    this.indicator = indicator
+    this.panel = panel
   }
 }
 
@@ -116,7 +116,7 @@ class ComicWindow extends Phaser.Group {
  */
 class ElevatorIndicatorScene extends ComicWindow {
   constructor(game: Phaser.Game) {
-    super(game)
+    super(game, 'ElevatorIndicatorScene')
     this.backgroundColor = 0x7c858a
   }
 }
@@ -127,7 +127,7 @@ class ElevatorIndicatorScene extends ComicWindow {
 class ElevatorPanelScene extends ComicWindow  {
   elevatorPanel: ElevatorPanel
   constructor(game: Phaser.Game) {
-    super(game)
+    super(game, 'ElevatorPanelScene')
   }
 }
 
