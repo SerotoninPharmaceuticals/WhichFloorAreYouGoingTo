@@ -105,6 +105,14 @@ class ElevatorHumanScene extends ComicWindow {
 class ElevatorController {
   indicator: ElevatorIndicatorScene
   panel: ElevatorPanel
+  currentFloor: number = 0
+  destFloor: number = 0
+  directionUp: boolean = true
+  panelState: boolean[] = [
+    false, false, false, false, false,
+    false, false, false, false, false,
+    false, false, false, false, false
+    ]
   constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel) {
     this.indicator = indicator
     this.panel = panel
@@ -144,11 +152,22 @@ class ElevatorPanelButton extends Phaser.Button {
     this.buttonObject = new Phaser.Sprite(game, 4, 4, 'panel-numbers')
     this.addChild(this.buttonObject)
     this.buttonObject.frame = buttonNumber + 1
-    this.onInputDown.add(this.press, this)
   }
-  press() {
-    this.frame = 1
+  
+  public get lighted() : boolean {
+    if (this.frame == 0) {
+      return false
+    } else {
+      return true
+    }
   }
+  
+  pressByButtonNumber(buttonNumber: number) {
+    if (buttonNumber == this.buttonNumber) {
+      this.frame = 1
+    }
+  }
+
   dismissByButtonNumber(buttonNumber: number) {
     if (buttonNumber == this.buttonNumber) {
       this.frame = 0
@@ -160,8 +179,10 @@ class ElevatorPanelButton extends Phaser.Button {
  * ElevatorPanel
  */
 class ElevatorPanel extends Phaser.Group {
+
   controlSingal: Phaser.Signal = new Phaser.Signal()
-  controlButtons: Phaser.Button[]
+  controlButtons: ElevatorPanelButton[]
+
   constructor(game: Phaser.Game, parent?: PIXI.DisplayObjectContainer) {
     super(game, parent, 'ElevatorPanel')
     var self = this
@@ -170,9 +191,17 @@ class ElevatorPanel extends Phaser.Group {
       let button: ElevatorPanelButton = this.add(new ElevatorPanelButton(this.game, i < 7 ? 40 : 88, i < 7 ? 80 + i * 48 : 80 - 7 * 48 + i * 48, i))
       this.controlButtons.push(button)
       button.onInputDown.add(() => {
-        self.controlSingal.dispatch([{buttonNumber: button.buttonNumber}])
+        self.controlSingal.dispatch(button.buttonNumber)
       })
     }
+  }
+
+  dismissByButtonNumber(buttonNumber: number) {
+    this.callAll('dismissByButtonNumber', null, buttonNumber)
+  }
+
+  pressByButtonNumber(buttonNumber: number) {
+    this.callAll('pressByButtonNumber', null, buttonNumber)
   }
 }
 
@@ -372,6 +401,7 @@ class WhichFloor {
   scene_elevatorPanel: ElevatorPanelScene
   
   controller_dialogHost: DialogHost
+  controller_elevator: ElevatorController
 
   create() {
     this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game))
@@ -389,14 +419,20 @@ class WhichFloor {
     this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game))
     this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457)
     
-    this.scene_elevatorPanel.elevatorPanel.controlSingal.add((event) => {
-      console.log(event[0])
+    this.scene_elevatorPanel.elevatorPanel.controlSingal.add((buttonNumber: number) => {
+      console.log(buttonNumber)
+      this.game.time.events.add(200, () => {
+        this.scene_elevatorPanel.elevatorPanel.dismissByButtonNumber(buttonNumber)
+      }, this)
     })
 
     this.controller_dialogHost = new DialogHost(this.game)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 100)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130)
+    
+    this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel)
+    
   }
   
   render() {
