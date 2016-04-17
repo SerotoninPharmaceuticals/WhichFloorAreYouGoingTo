@@ -110,6 +110,119 @@ class ElevatorPanel extends Phaser.Group {
     }
 }
 /**
+ * Dialog
+ */
+class Dialog extends Phaser.Group {
+    constructor(game, parent, name = 'Dialog') {
+        super(game, parent, name);
+        this.background = this.add(new Phaser.Graphics(game, 0, 0));
+        this.arrow = this.add(new Phaser.Graphics(game, 0, 0));
+        this.textObject = this.add(new Phaser.Text(game, Dialog.padding.x, Dialog.padding.y, '', Dialog.style));
+        this.textObject.lineSpacing = -5;
+    }
+    set text(text) {
+        this.textObject.text = text;
+        this.updateDialog();
+    }
+    drawAt(arrowPoint, arrowHeight, backgroundWidth) {
+        this.arrowPoint = arrowPoint;
+        this.arrowHeight = arrowHeight;
+        this.backgroundWidth = backgroundWidth;
+        this.updateDialog();
+    }
+    updateDialog() {
+        let arrow = this.arrow.clear();
+        let background = this.background.clear();
+        let textObject = this.textObject;
+        if (!this.arrowPoint) {
+            textObject.alpha = 0;
+            return;
+        }
+        else {
+            textObject.alpha = 1;
+        }
+        textObject.wordWrapWidth = this.backgroundWidth - Dialog.padding.x * 2;
+        let textBounds = textObject.getLocalBounds();
+        let dialogPosition = new Phaser.Point(this.arrowPoint.x - 10 - Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight - textBounds.height - Dialog.padding.y * 2);
+        textObject.x = dialogPosition.x + Dialog.padding.x;
+        textObject.y = dialogPosition.y + Dialog.padding.y + 2;
+        // Draw arrow
+        arrow.beginFill(0xffffff);
+        arrow.drawPolygon([
+            new Phaser.Point(this.arrowPoint.x - Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight),
+            this.arrowPoint,
+            new Phaser.Point(this.arrowPoint.x + Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight),
+        ]);
+        arrow.endFill();
+        arrow.lineStyle(Dialog.borderWidth, 0x000000)
+            .moveTo(this.arrowPoint.x - Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight)
+            .lineTo(this.arrowPoint.x, this.arrowPoint.y)
+            .lineTo(this.arrowPoint.x + 1, this.arrowPoint.y)
+            .lineTo(this.arrowPoint.x + Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight);
+        // Draw background
+        this.dialogHeight = textBounds.height + Dialog.padding.y * 2;
+        background.beginFill(0xffffff);
+        background.lineStyle(Dialog.borderWidth, 0x000000);
+        background.drawRoundedRect(dialogPosition.x, dialogPosition.y + Dialog.borderWidth - 1, textBounds.width + Dialog.padding.x * 2, this.dialogHeight, 6);
+        background.endFill();
+    }
+}
+Dialog.padding = new Phaser.Point(6, 5);
+Dialog.borderWidth = 2;
+Dialog.arrowWidth = 6;
+Dialog.style = { font: 'normal 10pt Marker Felt', fill: 0x333333, align: 'center', wordWrap: true, wordWrapWidth: 100 };
+/**
+ * DialogAreaSubDialog
+ */
+class DialogAreaSubDialog extends Dialog {
+    constructor(game, parent, name = 'DialogAreaSubDialog') {
+        super(game, parent, name);
+    }
+}
+/**
+ * DialogArea
+ */
+class DialogArea extends Phaser.Group {
+    constructor(game, parent, name = 'DialogArea') {
+        super(game, parent, name);
+        this.baseLine = 200;
+        this.dialogs = new Array();
+    }
+    displayDialog(text, x) {
+        let newDialog = this.add(new DialogAreaSubDialog(this.game, this, 'DialogAreaSubDialog'));
+        newDialog.text = text;
+        newDialog.xPosition = x;
+        this.dialogs.push(newDialog);
+        this.updateDialogs();
+        return newDialog;
+    }
+    updateDialogs() {
+        var currentHeight = 14;
+        var self = this;
+        this.dialogs
+            .sort((a, b) => {
+            return b.xPosition - a.xPosition;
+        })
+            .forEach((dialog) => {
+            dialog.drawAt(new Phaser.Point(dialog.xPosition, self.baseLine), currentHeight, 800);
+            currentHeight += dialog.dialogHeight + 4;
+        });
+    }
+    removeDialog(dialog) {
+        delete this.dialogs[this.dialogs.indexOf(dialog)];
+        this.removeChild(dialog);
+        this.updateDialogs();
+    }
+}
+/**
+ * DialogHost
+ */
+class DialogHost {
+    constructor(game) {
+        this.game = game;
+    }
+}
+/**
  * WhichFloor
  */
 class WhichFloor {
@@ -133,6 +246,11 @@ class WhichFloor {
         this.scene_mouth.origin = new Origin(323, 250, 117, 76);
         this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game));
         this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457);
+        var d = this.game.world.add(new DialogArea(this.game, this.game.world));
+        var c = d.displayDialog('10th floor is just fine.', 100);
+        d.displayDialog('Let me see... Maybe 8?', 120);
+        d.displayDialog('Ground.', 140);
+        d.removeDialog(c);
     }
     render() {
     }
