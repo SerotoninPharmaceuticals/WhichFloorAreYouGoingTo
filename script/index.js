@@ -98,6 +98,28 @@ class ElevatorIndicatorScene extends ComicWindow {
 class ElevatorPanelScene extends ComicWindow {
     constructor(game) {
         super(game, 'ElevatorPanelScene');
+        this.elevatorPanel = this.add(new ElevatorPanel(game, this));
+    }
+}
+/**
+ * ElevatorPanelButton
+ */
+class ElevatorPanelButton extends Phaser.Button {
+    constructor(game, x, y, buttonNumber) {
+        super(game, x, y, 'panel-button-seat');
+        this.buttonNumber = buttonNumber;
+        this.buttonObject = new Phaser.Sprite(game, 4, 4, 'panel-numbers');
+        this.addChild(this.buttonObject);
+        this.buttonObject.frame = buttonNumber + 1;
+        this.onInputDown.add(this.press, this);
+    }
+    press() {
+        this.frame = 1;
+    }
+    dismissByButtonNumber(buttonNumber) {
+        if (buttonNumber == this.buttonNumber) {
+            this.frame = 0;
+        }
     }
 }
 /**
@@ -107,6 +129,15 @@ class ElevatorPanel extends Phaser.Group {
     constructor(game, parent) {
         super(game, parent, 'ElevatorPanel');
         this.controlSingal = new Phaser.Signal();
+        var self = this;
+        this.controlButtons = [];
+        for (var i = -1; i <= 13; i++) {
+            let button = this.add(new ElevatorPanelButton(this.game, i < 7 ? 40 : 88, i < 7 ? 80 + i * 48 : 80 - 7 * 48 + i * 48, i));
+            this.controlButtons.push(button);
+            button.onInputDown.add(() => {
+                self.controlSingal.dispatch([{ buttonNumber: button.buttonNumber }]);
+            });
+        }
     }
 }
 /**
@@ -220,6 +251,22 @@ class DialogArea extends Phaser.Group {
 class DialogHost {
     constructor(game) {
         this.game = game;
+        this.elevatorDialogArea = new DialogArea(game, game.world);
+        this.elevatorDialogArea.baseLine = 100;
+    }
+    displayDialog(text, arrowPoint, width = 1000, arrowHeight = 14) {
+        let dialog = new Dialog(this.game, this.game.world, 'DialogByDialogHost');
+        dialog.text = text;
+        dialog.drawAt(arrowPoint, arrowHeight, width);
+        return dialog;
+    }
+    autoDissmissDialog(dialog, delay) {
+        this.game.time.events.add(delay, () => {
+            dialog.parent.removeChild(dialog);
+        });
+    }
+    displayElevatorDialog(text, x, delay = Phaser.Timer.SECOND * 3) {
+        this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay);
     }
 }
 /**
@@ -234,6 +281,8 @@ class WhichFloor {
     }
     preload() {
         this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'));
+        this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40);
+        this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15);
     }
     create() {
         this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game));
@@ -246,11 +295,13 @@ class WhichFloor {
         this.scene_mouth.origin = new Origin(323, 250, 117, 76);
         this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game));
         this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457);
-        var d = this.game.world.add(new DialogArea(this.game, this.game.world));
-        var c = d.displayDialog('10th floor is just fine.', 100);
-        d.displayDialog('Let me see... Maybe 8?', 120);
-        d.displayDialog('Ground.', 140);
-        d.removeDialog(c);
+        this.scene_elevatorPanel.elevatorPanel.controlSingal.add((event) => {
+            console.log(event[0]);
+        });
+        this.controller_dialogHost = new DialogHost(this.game);
+        this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 100);
+        this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180);
+        this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130);
     }
     render() {
     }

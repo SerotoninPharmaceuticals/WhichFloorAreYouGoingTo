@@ -128,6 +128,31 @@ class ElevatorPanelScene extends ComicWindow  {
   elevatorPanel: ElevatorPanel
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorPanelScene')
+    this.elevatorPanel = this.add(new ElevatorPanel(game, this))
+  }
+}
+
+/**
+ * ElevatorPanelButton
+ */
+class ElevatorPanelButton extends Phaser.Button {
+  buttonNumber: number
+  buttonObject: Phaser.Sprite
+  constructor(game: Phaser.Game, x: number, y: number, buttonNumber: number) {
+    super(game, x, y, 'panel-button-seat')
+    this.buttonNumber = buttonNumber
+    this.buttonObject = new Phaser.Sprite(game, 4, 4, 'panel-numbers')
+    this.addChild(this.buttonObject)
+    this.buttonObject.frame = buttonNumber + 1
+    this.onInputDown.add(this.press, this)
+  }
+  press() {
+    this.frame = 1
+  }
+  dismissByButtonNumber(buttonNumber: number) {
+    if (buttonNumber == this.buttonNumber) {
+      this.frame = 0
+    }
   }
 }
 
@@ -136,8 +161,18 @@ class ElevatorPanelScene extends ComicWindow  {
  */
 class ElevatorPanel extends Phaser.Group {
   controlSingal: Phaser.Signal = new Phaser.Signal()
+  controlButtons: Phaser.Button[]
   constructor(game: Phaser.Game, parent?: PIXI.DisplayObjectContainer) {
     super(game, parent, 'ElevatorPanel')
+    var self = this
+    this.controlButtons = []
+    for (var i = -1; i <= 13; i++) {
+      let button: ElevatorPanelButton = this.add(new ElevatorPanelButton(this.game, i < 7 ? 40 : 88, i < 7 ? 80 + i * 48 : 80 - 7 * 48 + i * 48, i))
+      this.controlButtons.push(button)
+      button.onInputDown.add(() => {
+        self.controlSingal.dispatch([{buttonNumber: button.buttonNumber}])
+      })
+    }
   }
 }
 
@@ -283,8 +318,29 @@ class DialogArea extends Phaser.Group {
  */
 class DialogHost {
   game: Phaser.Game
+  elevatorDialogArea: DialogArea
+
   constructor(game: Phaser.Game) {
     this.game = game
+    this.elevatorDialogArea = new DialogArea(game, game.world)
+    this.elevatorDialogArea.baseLine = 100
+  }
+
+  displayDialog(text: string, arrowPoint: Phaser.Point, width: number = 1000, arrowHeight: number = 14): Dialog {
+    let dialog = new Dialog(this.game, this.game.world, 'DialogByDialogHost')
+    dialog.text = text
+    dialog.drawAt(arrowPoint, arrowHeight, width)
+    return dialog
+  }
+
+  autoDissmissDialog(dialog: Dialog, delay: number) {
+    this.game.time.events.add(delay, () => {
+      dialog.parent.removeChild(dialog)
+    })
+  }
+  
+  displayElevatorDialog(text: string, x: number, delay: number = Phaser.Timer.SECOND * 3) {
+    this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay)
   }
 }
 
@@ -305,6 +361,8 @@ class WhichFloor {
   
   preload() {
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
+    this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40)
+    this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15)
   }
   
   scene_elevatorMain: ComicWindow
@@ -312,6 +370,8 @@ class WhichFloor {
   scene_elevatorPhone: ComicWindow
   scene_mouth: ComicWindow
   scene_elevatorPanel: ElevatorPanelScene
+  
+  controller_dialogHost: DialogHost
 
   create() {
     this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game))
@@ -329,11 +389,14 @@ class WhichFloor {
     this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game))
     this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457)
     
-    var d: DialogArea = this.game.world.add(new DialogArea(this.game, this.game.world))
-    var c = d.displayDialog('10th floor is just fine.', 100)
-    d.displayDialog('Let me see... Maybe 8?', 120)
-    d.displayDialog('Ground.', 140)
-    d.removeDialog(c);
+    this.scene_elevatorPanel.elevatorPanel.controlSingal.add((event) => {
+      console.log(event[0])
+    })
+
+    this.controller_dialogHost = new DialogHost(this.game)
+    this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 100)
+    this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180)
+    this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130)
   }
   
   render() {
