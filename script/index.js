@@ -73,26 +73,142 @@ class ElevatorHumanScene extends ComicWindow {
         super(game, 'ElevatorHumanScene');
         this.add(new ElevatorHumanNotMachine(game, 10, 10));
     }
+    performPressAction(finished, context) {
+        finished.apply(context ? context : this);
+    }
+}
+var ElevatorPassengerType;
+(function (ElevatorPassengerType) {
+    ElevatorPassengerType[ElevatorPassengerType["Normal"] = 0] = "Normal";
+})(ElevatorPassengerType || (ElevatorPassengerType = {}));
+var ElevatorPassengerState;
+(function (ElevatorPassengerState) {
+    ElevatorPassengerState[ElevatorPassengerState["OnHold"] = 0] = "OnHold";
+    ElevatorPassengerState[ElevatorPassengerState["OnBoard"] = 1] = "OnBoard";
+})(ElevatorPassengerState || (ElevatorPassengerState = {}));
+/**
+ * ElevatorPassenger
+ */
+class ElevatorPassenger extends Phaser.Sprite {
+    constructor(game, type) {
+        super(game, 0, 0, ElevatorPassenger.spriteIdForType(type));
+    }
+    static spriteIdForType(type) {
+        return 'unimplemented';
+    }
+}
+/**
+ * ElevatorHumanResourceDept
+ * An invisable sprite manager
+ */
+class ElevatorHumanResourceDept extends Phaser.Group {
+    constructor(game) {
+        super(game, null, 'ElevatorHumanResourceDept');
+        this.passengers = [];
+        this.duration = 0.2 * Phaser.Timer.SECOND;
+        this.passengerGenerateSignal = new Phaser.Signal();
+        this.loopTimer = this.game.time.create(false);
+        this.loopTimer.loop(this.duration, this.generatePassengersInLoop, this);
+        this.loopTimer.start();
+    }
+    resume() {
+        this.loopTimer.resume();
+    }
+    pause() {
+        this.loopTimer.pause();
+    }
+    generatePassengersInLoop() {
+        console.log('called');
+        if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
+            console.log('generate passengers');
+        }
+    }
 }
 /**
  * ElevatorController
  */
 class ElevatorController {
-    constructor(indicator, panel) {
+    constructor(indicator, panel, human) {
         this.currentFloor = 0;
         this.destFloor = 0;
         this.directionUp = true;
+        this.panelState = [
+            false, false, false, false, false,
+            false, false, false, false, false,
+            false, false, false, false, false
+        ];
         this.indicator = indicator;
         this.panel = panel;
+        this.human = human;
+        this.panel.controlSingal.add(this.panelPressed, this);
+        this.indicator.arriveSignal.add(() => {
+            this.updateIndicator();
+        }, this);
+    }
+    panelPressed(buttonNumber) {
+        this.human.performPressAction(() => {
+            this.indicator.go(ElevatorDirection.Up);
+            this.panel.pressByButtonNumber(buttonNumber);
+        }, this);
+    }
+    updateIndicator() {
     }
 }
+var ElevatorDirection;
+(function (ElevatorDirection) {
+    ElevatorDirection[ElevatorDirection["Up"] = 0] = "Up";
+    ElevatorDirection[ElevatorDirection["Down"] = 1] = "Down";
+    ElevatorDirection[ElevatorDirection["Stop"] = 2] = "Stop";
+})(ElevatorDirection || (ElevatorDirection = {}));
 /**
  * ElevatorIndicatorScene
  */
 class ElevatorIndicatorScene extends ComicWindow {
     constructor(game) {
         super(game, 'ElevatorIndicatorScene');
+        this.currentFloor = 0;
+        this.direction = ElevatorDirection.Stop;
+        this.arriveSignal = new Phaser.Signal();
         this.backgroundColor = 0x7c858a;
+        this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0));
+        this.elevatorBox.beginFill(0xffffff, 0.5);
+        this.elevatorBox.drawRect(8, 0, 14, 15);
+        this.elevatorBox.endFill();
+        this.updateToFloor(this.currentFloor);
+    }
+    tweenAndNotify(floor, duration, easingFunc) {
+        this.game.add.tween(this.elevatorBox).to({ y: this.targetHeightForFloor(floor) }, duration, easingFunc, true);
+        this.game.time.events.add(duration, () => {
+            this.currentFloor = floor;
+            this.arriveSignal.dispatch(floor);
+        }, this);
+    }
+    go(direction) {
+        switch (direction) {
+            case ElevatorDirection.Up:
+                if (this.direction == ElevatorDirection.Stop) {
+                    this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Circular.In);
+                }
+                else {
+                    this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Linear.None);
+                }
+                break;
+            case ElevatorDirection.Down:
+                if (this.direction == ElevatorDirection.Stop) {
+                    this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Circular.In);
+                }
+                else {
+                    this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Linear.None);
+                }
+                break;
+        }
+        this.direction = direction;
+    }
+    targetHeightForFloor(floor) {
+        return (2 + 15 * 13) - floor * 15;
+    }
+    updateToFloor(floor) {
+        this.elevatorBox.y = this.targetHeightForFloor(floor);
     }
 }
 /**
@@ -114,7 +230,6 @@ class ElevatorPanelButton extends Phaser.Button {
         this.buttonObject = new Phaser.Sprite(game, 4, 4, 'panel-numbers');
         this.addChild(this.buttonObject);
         this.buttonObject.frame = buttonNumber + 1;
-        this.onInputDown.add(this.press, this);
     }
     get lighted() {
         if (this.frame == 0) {
@@ -124,11 +239,12 @@ class ElevatorPanelButton extends Phaser.Button {
             return true;
         }
     }
-    press() {
-        this.frame = 1;
+    pressByButtonNumber(buttonNumber) {
+        if (buttonNumber == this.buttonNumber) {
+            this.frame = 1;
+        }
     }
     dismissByButtonNumber(buttonNumber) {
-        console.log(buttonNumber);
         if (buttonNumber == this.buttonNumber) {
             this.frame = 0;
         }
@@ -152,8 +268,10 @@ class ElevatorPanel extends Phaser.Group {
         }
     }
     dismissByButtonNumber(buttonNumber) {
-        console.log('fater called');
         this.callAll('dismissByButtonNumber', null, buttonNumber);
+    }
+    pressByButtonNumber(buttonNumber) {
+        this.callAll('pressByButtonNumber', null, buttonNumber);
     }
 }
 /**
@@ -301,8 +419,8 @@ class WhichFloor {
         this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15);
     }
     create() {
-        this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game));
-        this.scene_elevatorMain.origin = new Origin(40, 25, 400, 213);
+        this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game));
+        this.scene_elevatorHuman.origin = new Origin(40, 25, 400, 213);
         this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game));
         this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230);
         this.scene_elevatorPhone = this.game.world.add(new ComicWindow(this.game));
@@ -311,17 +429,12 @@ class WhichFloor {
         this.scene_mouth.origin = new Origin(323, 250, 117, 76);
         this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game));
         this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457);
-        this.scene_elevatorPanel.elevatorPanel.controlSingal.add((buttonNumber) => {
-            console.log(buttonNumber);
-            this.game.time.events.add(200, () => {
-                this.scene_elevatorPanel.elevatorPanel.dismissByButtonNumber(buttonNumber);
-            }, this);
-        });
         this.controller_dialogHost = new DialogHost(this.game);
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 100);
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180);
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130);
-        this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel);
+        this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game);
+        this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman);
     }
     render() {
     }

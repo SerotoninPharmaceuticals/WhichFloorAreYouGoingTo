@@ -97,6 +97,71 @@ class ElevatorHumanScene extends ComicWindow {
     super(game, 'ElevatorHumanScene')
     this.add(new ElevatorHumanNotMachine(game, 10, 10))
   }
+  performPressAction(finished: Function, context?: any) {
+    finished.apply(context? context : this)
+  }
+}
+
+enum ElevatorPassengerType {
+  Normal,
+  
+}
+
+enum ElevatorPassengerState {
+  OnHold,
+  OnBoard,
+}
+
+/**
+ * ElevatorPassenger
+ */
+class ElevatorPassenger extends Phaser.Sprite {
+  static spriteIdForType(type: ElevatorPassengerType): string {
+    return 'unimplemented'
+  }
+
+  type: ElevatorPassengerType
+  state: ElevatorPassengerState
+  waitingFloor: number
+  destFloor: number
+
+  constructor(game: Phaser.Game, type: ElevatorPassengerType) {
+    super(game, 0, 0, ElevatorPassenger.spriteIdForType(type))
+  }
+}
+
+/**
+ * ElevatorHumanResourceDept
+ * An invisable sprite manager
+ */
+class ElevatorHumanResourceDept extends Phaser.Group {
+  passengers: ElevatorPassenger[] = []
+  
+  duration: number = 0.2 * Phaser.Timer.SECOND
+  loopTimer: Phaser.Timer
+
+  constructor(game: Phaser.Game) {
+    super(game, null, 'ElevatorHumanResourceDept')
+    this.loopTimer = this.game.time.create(false)
+    this.loopTimer.loop(this.duration, this.generatePassengersInLoop, this)
+    this.loopTimer.start()
+  }
+  
+  resume() {
+    this.loopTimer.resume()
+  }
+  
+  pause() {
+    this.loopTimer.pause()
+  }
+  
+  passengerGenerateSignal = new Phaser.Signal()
+
+  generatePassengersInLoop() {
+    if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
+      console.log('generate passengers')
+    }
+  }
 }
 
 /**
@@ -105,6 +170,8 @@ class ElevatorHumanScene extends ComicWindow {
 class ElevatorController {
   indicator: ElevatorIndicatorScene
   panel: ElevatorPanel
+  human: ElevatorHumanScene
+
   currentFloor: number = 0
   destFloor: number = 0
   directionUp: boolean = true
@@ -113,19 +180,91 @@ class ElevatorController {
     false, false, false, false, false,
     false, false, false, false, false
     ]
-  constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel) {
+
+  constructor(indicator: ElevatorIndicatorScene, panel: ElevatorPanel, human: ElevatorHumanScene) {
     this.indicator = indicator
     this.panel = panel
+    this.human = human
+    this.panel.controlSingal.add(this.panelPressed, this)
+    this.indicator.arriveSignal.add(() => {
+      this.updateIndicator()
+    }, this)
   }
+  
+  panelPressed(buttonNumber: number) {
+    this.human.performPressAction(() => {
+      this.indicator.go(ElevatorDirection.Up)
+      this.panel.pressByButtonNumber(buttonNumber)
+    }, this)
+  }
+  
+  updateIndicator() {
+    
+  }
+}
+
+enum ElevatorDirection {
+  Up,
+  Down,
+  Stop
 }
 
 /**
  * ElevatorIndicatorScene
  */
 class ElevatorIndicatorScene extends ComicWindow {
+
+  elevatorBox: Phaser.Graphics
+
+  currentFloor: number = 0
+  direction: ElevatorDirection = ElevatorDirection.Stop
+  
+  arriveSignal: Phaser.Signal = new Phaser.Signal()
+
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorIndicatorScene')
     this.backgroundColor = 0x7c858a
+    this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0))
+    this.elevatorBox.beginFill(0xffffff, 0.5)
+    this.elevatorBox.drawRect(8, 0, 14, 15)
+    this.elevatorBox.endFill()
+    this.updateToFloor(this.currentFloor)
+  }
+  
+  tweenAndNotify(floor: number, duration: number, easingFunc: Function) {
+    this.game.add.tween(this.elevatorBox).to({y: this.targetHeightForFloor(floor)}, duration, easingFunc, true)
+    this.game.time.events.add(duration, () => {
+      this.currentFloor = floor
+      this.arriveSignal.dispatch(floor)
+    }, this)
+  }
+  
+  go(direction: ElevatorDirection) {
+    switch (direction) {
+    case ElevatorDirection.Up:
+      if (this.direction == ElevatorDirection.Stop) {
+        this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Circular.In)
+      } else {
+        this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Linear.None)
+      }
+      break
+    case ElevatorDirection.Down:
+      if (this.direction == ElevatorDirection.Stop) {
+        this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Circular.In)
+      } else {
+        this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Linear.None)
+      }
+      break
+    }
+    this.direction = direction
+  }
+  
+  targetHeightForFloor(floor: number) {
+    return (2 + 15 * 13) - floor * 15
+  }
+  
+  updateToFloor(floor: number) {
+    this.elevatorBox.y = this.targetHeightForFloor(floor)
   }
 }
 
@@ -394,7 +533,7 @@ class WhichFloor {
     this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15)
   }
   
-  scene_elevatorMain: ComicWindow
+  scene_elevatorHuman: ElevatorHumanScene
   scene_elevatorIndicator: ElevatorIndicatorScene
   scene_elevatorPhone: ComicWindow
   scene_mouth: ComicWindow
@@ -402,10 +541,12 @@ class WhichFloor {
   
   controller_dialogHost: DialogHost
   controller_elevator: ElevatorController
+  
+  group_elevatorHumanResourceDept: ElevatorHumanResourceDept
 
   create() {
-    this.scene_elevatorMain = this.game.world.add(new ComicWindow(this.game))
-    this.scene_elevatorMain.origin = new Origin(40, 25, 400, 213)
+    this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game))
+    this.scene_elevatorHuman.origin = new Origin(40, 25, 400, 213)
     
     this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game))
     this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230)
@@ -418,20 +559,15 @@ class WhichFloor {
     
     this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game))
     this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457)
-    
-    this.scene_elevatorPanel.elevatorPanel.controlSingal.add((buttonNumber: number) => {
-      console.log(buttonNumber)
-      this.game.time.events.add(200, () => {
-        this.scene_elevatorPanel.elevatorPanel.dismissByButtonNumber(buttonNumber)
-      }, this)
-    })
 
     this.controller_dialogHost = new DialogHost(this.game)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 100)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180)
     this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130)
     
-    this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel)
+    this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game)
+    
+    this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman)
     
   }
   
