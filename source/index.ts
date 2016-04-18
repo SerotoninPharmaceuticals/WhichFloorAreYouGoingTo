@@ -235,9 +235,9 @@ class ElevatorPassengerNormal extends ElevatorPassenger {
   constructor(game: Phaser.Game) {
     super(game, ElevatorPassengerType.Normal, 'passangers-normal')
     this.frame = Math.floor(Math.random() * 8)
-    this.waitingFloor = Math.floor(-1 + Math.random() * 15)
+    this.waitingFloor = Math.floor(0 + Math.random() * 14)
     do {
-      this.destFloor = Math.floor(-1 + Math.random() * 15) 
+      this.destFloor = Math.floor(0 + Math.random() * 14) 
     } while (this.waitingFloor == this.destFloor)
   }
 }
