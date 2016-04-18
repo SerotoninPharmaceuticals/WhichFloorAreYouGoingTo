@@ -1,5 +1,11 @@
 // Which floor are you going to
 
+function PickOneRandomly<T>(array: T[]): T {
+  return array[
+    Math.floor(Math.random() * array.length)
+  ]
+}
+
 /**
  * Size
  */
@@ -103,13 +109,28 @@ class ElevatorHumanScene extends ComicWindow {
 }
 
 enum ElevatorPassengerType {
+  // Expellable
   Normal,
+  Squid,
   
+  // Unexpellable
+  Manager,
+  Gift,
+  Chair,
+  BedMan,
+  Coffee
 }
 
 enum ElevatorPassengerState {
   OnHold,
   OnBoard,
+}
+
+interface ElevatorPassengerLines {
+  whichFloor: string
+  howsTheWork: string
+  whatsTheWeather: string
+  howAreYou: string
 }
 
 /**
@@ -124,6 +145,43 @@ class ElevatorPassenger extends Phaser.Sprite {
   state: ElevatorPassengerState
   waitingFloor: number
   destFloor: number
+  
+  public get lines(): ElevatorPassengerLines {
+    return {
+      whichFloor: ((): string => {
+          switch (this.destFloor) {
+          case 0:
+            return 'Ground'
+          case 1:
+            return 'First'
+          case 2:
+            return 'Second'
+          case 3:
+            return 'Third'
+          default:
+            return this.destFloor + 'th'
+          }
+        }) + PickOneRandomly([' floor, please', ' floor']),
+      howsTheWork: PickOneRandomly([
+        'It\'s going fine',
+        'thanks, As usual',
+        'It\'s going well',
+        'Not Bad',
+      ]),
+      whatsTheWeather: PickOneRandomly([
+        'I hope it\'s a clear day',
+        'Guess it\'s sunny',
+        'Haven\'t checked it yet',
+        'I don\'t know',
+      ]),
+      howAreYou: PickOneRandomly([
+        'Fine, thank you',
+        'Upright and still breathing',
+        'Same old, same old',
+        'Good',
+      ]),
+    }
+  }
 
   constructor(game: Phaser.Game, type: ElevatorPassengerType) {
     super(game, 0, 0, ElevatorPassenger.spriteIdForType(type))
@@ -131,7 +189,84 @@ class ElevatorPassenger extends Phaser.Sprite {
 }
 
 /**
+ * ElevatorPassengerManager
+ */
+class ElevatorPassengerManager extends ElevatorPassenger {
+  
+  public get lines() : ElevatorPassengerLines {
+    return {
+      whichFloor: '15th, haven\'t the telephone guy told you already?',
+      howsTheWork: 'As long as you keep the elevator running, it will be fine',
+      whatsTheWeather: 'It has nothing to do with neither of our work',
+      howAreYou: 'I am',
+    }
+  }
+  
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Manager)
+  }
+}
+
+/**
+ * ElevatorPassengerGift
+ */
+class ElevatorPassengerGift extends ElevatorPassenger {
+  
+  public get lines() : ElevatorPassengerLines {
+    return {
+      whichFloor: '2nd floor, 9th floor, and then 12th floor',
+      howsTheWork: 'Couldn\'t be better, see? Delivering the company\'s gratitude to our employees',
+      whatsTheWeather: 'Bad, the basement is almost flooded, ruined half of our prepared gift',
+      howAreYou: 'Good as a good gift manager',
+    }
+  }
+
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Gift)
+  }
+}
+
+/**
+ * ElevatorPassengerChair
+ */
+class ElevatorPassengerChair extends ElevatorPassenger {
+  
+  public get lines() : ElevatorPassengerLines {
+    return {
+      whichFloor: 'Is it 4th floor, isn\'t it?',
+      howsTheWork: 'Best as I could',
+      whatsTheWeather: 'Who knows? Who cares?',
+      howAreYou: 'How am I what?',
+    }
+  }
+
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Gift)
+  }
+}
+
+/**
+ * ElevatorPassengerBedMan
+ */
+class ElevatorPassengerBedMan extends ElevatorPassenger {
+  
+  public get lines() : ElevatorPassengerLines {
+    return {
+      whichFloor: 'I thought it has already been notified, it\'s 10th then',
+      howsTheWork: 'Improving. Slightly, no, noticeably better than yesterday',
+      whatsTheWeather: 'Changing. Mostly cloudy, showers around, getting colder',
+      howAreYou: '3.5 out of 5, I could complain, but I\'m not going to',
+    }
+  }
+
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Gift)
+  }
+}
+
+/**
  * ElevatorHumanResourceDept
+ * Stores all waiting passangers and generate normal passangers
  * An invisable sprite manager
  */
 class ElevatorHumanResourceDept extends Phaser.Group {
@@ -161,6 +296,32 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
       console.log('generate passengers')
     }
+  }
+  
+  expelAllPassangers() {
+    this.children.forEach((passanger: ElevatorPassenger) => {
+      switch (passanger.type) {
+      case ElevatorPassengerType.Normal:
+      case ElevatorPassengerType.Squid:
+        this.removeChild(passanger)
+        break
+      }
+    })
+  }
+  
+  generatePassangersByType(type: ElevatorPassengerType): ElevatorPassenger[] {
+    var passengers: ElevatorPassenger[] = []
+    switch (type) {
+      case ElevatorPassengerType.Coffee:
+        for (var index = 1; index <= 13; index++) {
+          var passenger = this.add(new ElevatorPassenger(this.game, type))
+          passengers.push(passenger)
+        }
+        break
+      case ElevatorPassengerType.Gift:
+        
+    }
+    return passengers
   }
 }
 

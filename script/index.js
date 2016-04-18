@@ -1,4 +1,7 @@
 // Which floor are you going to
+function PickOneRandomly(array) {
+    return array[Math.floor(Math.random() * array.length)];
+}
 /**
  * Size
  */
@@ -79,7 +82,15 @@ class ElevatorHumanScene extends ComicWindow {
 }
 var ElevatorPassengerType;
 (function (ElevatorPassengerType) {
+    // Expellable
     ElevatorPassengerType[ElevatorPassengerType["Normal"] = 0] = "Normal";
+    ElevatorPassengerType[ElevatorPassengerType["Squid"] = 1] = "Squid";
+    // Unexpellable
+    ElevatorPassengerType[ElevatorPassengerType["Manager"] = 2] = "Manager";
+    ElevatorPassengerType[ElevatorPassengerType["Gift"] = 3] = "Gift";
+    ElevatorPassengerType[ElevatorPassengerType["Chair"] = 4] = "Chair";
+    ElevatorPassengerType[ElevatorPassengerType["BedMan"] = 5] = "BedMan";
+    ElevatorPassengerType[ElevatorPassengerType["Coffee"] = 6] = "Coffee";
 })(ElevatorPassengerType || (ElevatorPassengerType = {}));
 var ElevatorPassengerState;
 (function (ElevatorPassengerState) {
@@ -96,9 +107,110 @@ class ElevatorPassenger extends Phaser.Sprite {
     static spriteIdForType(type) {
         return 'unimplemented';
     }
+    get lines() {
+        return {
+            whichFloor: (() => {
+                switch (this.destFloor) {
+                    case 0:
+                        return 'Ground';
+                    case 1:
+                        return 'First';
+                    case 2:
+                        return 'Second';
+                    case 3:
+                        return 'Third';
+                    default:
+                        return this.destFloor + 'th';
+                }
+            }) + PickOneRandomly([' floor, please', ' floor']),
+            howsTheWork: PickOneRandomly([
+                'It\'s going fine',
+                'thanks, As usual',
+                'It\'s going well',
+                'Not Bad',
+            ]),
+            whatsTheWeather: PickOneRandomly([
+                'I hope it\'s a clear day',
+                'Guess it\'s sunny',
+                'Haven\'t checked it yet',
+                'I don\'t know',
+            ]),
+            howAreYou: PickOneRandomly([
+                'Fine, thank you',
+                'Upright and still breathing',
+                'Same old, same old',
+                'Good',
+            ]),
+        };
+    }
+}
+/**
+ * ElevatorPassengerManager
+ */
+class ElevatorPassengerManager extends ElevatorPassenger {
+    constructor(game) {
+        super(game, ElevatorPassengerType.Manager);
+    }
+    get lines() {
+        return {
+            whichFloor: '15th, haven\'t the telephone guy told you already?',
+            howsTheWork: 'As long as you keep the elevator running, it will be fine',
+            whatsTheWeather: 'It has nothing to do with neither of our work',
+            howAreYou: 'I am',
+        };
+    }
+}
+/**
+ * ElevatorPassengerGift
+ */
+class ElevatorPassengerGift extends ElevatorPassenger {
+    constructor(game) {
+        super(game, ElevatorPassengerType.Gift);
+    }
+    get lines() {
+        return {
+            whichFloor: '2nd floor, 9th floor, and then 12th floor',
+            howsTheWork: 'Couldn\'t be better, see? Delivering the company\'s gratitude to our employees',
+            whatsTheWeather: 'Bad, the basement is almost flooded, ruined half of our prepared gift',
+            howAreYou: 'Good as a good gift manager',
+        };
+    }
+}
+/**
+ * ElevatorPassengerChair
+ */
+class ElevatorPassengerChair extends ElevatorPassenger {
+    constructor(game) {
+        super(game, ElevatorPassengerType.Gift);
+    }
+    get lines() {
+        return {
+            whichFloor: 'Is it 4th floor, isn\'t it?',
+            howsTheWork: 'Best as I could',
+            whatsTheWeather: 'Who knows? Who cares?',
+            howAreYou: 'How am I what?',
+        };
+    }
+}
+/**
+ * ElevatorPassengerBedMan
+ */
+class ElevatorPassengerBedMan extends ElevatorPassenger {
+    constructor(game) {
+        super(game, ElevatorPassengerType.Gift);
+    }
+    get lines() {
+        return {
+            whichFloor: 'I thought it has already been notified, it\'s 10th then',
+            howsTheWork: 'Improving. Slightly, no, noticeably better than yesterday',
+            whatsTheWeather: 'Changing. Mostly cloudy, showers around, getting colder',
+            howAreYou: '3.5 out of 5, I could complain, but I\'m not going to',
+        };
+    }
 }
 /**
  * ElevatorHumanResourceDept
+ * Stores all waiting passangers and generate normal passangers
  * An invisable sprite manager
  */
 class ElevatorHumanResourceDept extends Phaser.Group {
@@ -118,10 +230,32 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         this.loopTimer.pause();
     }
     generatePassengersInLoop() {
-        console.log('called');
         if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
             console.log('generate passengers');
         }
+    }
+    expelAllPassangers() {
+        this.children.forEach((passanger) => {
+            switch (passanger.type) {
+                case ElevatorPassengerType.Normal:
+                case ElevatorPassengerType.Squid:
+                    this.removeChild(passanger);
+                    break;
+            }
+        });
+    }
+    generatePassangersByType(type) {
+        var passengers = [];
+        switch (type) {
+            case ElevatorPassengerType.Coffee:
+                for (var index = 1; index <= 13; index++) {
+                    var passenger = this.add(new ElevatorPassenger(this.game, type));
+                    passengers.push(passenger);
+                }
+                break;
+            case ElevatorPassengerType.Gift:
+        }
+        return passengers;
     }
 }
 /**
