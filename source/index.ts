@@ -127,19 +127,23 @@ enum ElevatorPassengerState {
 }
 
 interface ElevatorPassengerLines {
-  whichFloor: string
-  howsTheWork: string
-  whatsTheWeather: string
-  howAreYou: string
+  whichFloor: string,
+  howsTheWork: string,
+  whatsTheWeather: string,
+  howAreYou: string,
+}
+
+interface ElevatorPassengerSpeakPermission {
+  whichFloor: boolean,
+  howsTheWork: boolean,
+  whatsTheWeather: boolean,
+  howAreYou: boolean,
 }
 
 /**
  * ElevatorPassenger
  */
 class ElevatorPassenger extends Phaser.Sprite {
-  static spriteIdForType(type: ElevatorPassengerType): string {
-    return 'unimplemented'
-  }
 
   type: ElevatorPassengerType
   state: ElevatorPassengerState
@@ -182,9 +186,59 @@ class ElevatorPassenger extends Phaser.Sprite {
       ]),
     }
   }
+  
+  speakPermission: ElevatorPassengerSpeakPermission = {
+    whichFloor: true,
+    howsTheWork: true,
+    whatsTheWeather: true,
+    howAreYou: true,
+  }
 
-  constructor(game: Phaser.Game, type: ElevatorPassengerType) {
-    super(game, 0, 0, ElevatorPassenger.spriteIdForType(type))
+  constructor(game: Phaser.Game, type: ElevatorPassengerType, key: string) {
+    super(game, 0, 0, key)
+    this.anchor.set(0.5, 1.0)
+  }
+}
+
+/**
+ * ElevatorPassengerSquid
+ */
+class ElevatorPassengerSquid extends ElevatorPassenger {
+  
+  speakPermission: ElevatorPassengerSpeakPermission = {
+    whichFloor: true,
+    howsTheWork: false,
+    whatsTheWeather: false,
+    howAreYou: false,
+  }
+  
+  constructor(game: Phaser.Game, frame: number) {
+    super(game, ElevatorPassengerType.Squid, 'passangers-squid')
+    this.frame = frame
+    this.destFloor = 0
+    switch(this.frame) {
+    case 0:
+      this.waitingFloor = 2
+    case 1:
+      this.waitingFloor = 9
+    case 2:
+      this.waitingFloor = 12
+    }
+  }
+}
+
+/**
+ * ElevatorPassengerNormal
+ */
+class ElevatorPassengerNormal extends ElevatorPassenger {
+  
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Normal, 'passangers-normal')
+    this.frame = Math.floor(Math.random() * 8)
+    this.waitingFloor = Math.floor(-1 + Math.random() * 15)
+    do {
+      this.destFloor = Math.floor(-1 + Math.random() * 15) 
+    } while (this.waitingFloor == this.destFloor)
   }
 }
 
@@ -203,7 +257,9 @@ class ElevatorPassengerManager extends ElevatorPassenger {
   }
   
   constructor(game: Phaser.Game) {
-    super(game, ElevatorPassengerType.Manager)
+    super(game, ElevatorPassengerType.Manager, 'passanger-managers')
+    this.destFloor = 13
+    this.waitingFloor = 3
   }
 }
 
@@ -221,8 +277,18 @@ class ElevatorPassengerGift extends ElevatorPassenger {
     }
   }
 
-  constructor(game: Phaser.Game) {
-    super(game, ElevatorPassengerType.Gift)
+  constructor(game: Phaser.Game, frame: number) {
+    super(game, ElevatorPassengerType.Gift, 'passangers-gift')
+    this.frame = frame
+    switch(this.frame) {
+    case 0:
+      this.destFloor = 2
+    case 1:
+      this.destFloor = 9
+    case 2:
+      this.destFloor = 12
+    }
+    this.waitingFloor = -1
   }
 }
 
@@ -241,7 +307,9 @@ class ElevatorPassengerChair extends ElevatorPassenger {
   }
 
   constructor(game: Phaser.Game) {
-    super(game, ElevatorPassengerType.Gift)
+    super(game, ElevatorPassengerType.Chair, 'passanger-chairs')
+    this.waitingFloor = 11
+    this.destFloor = 4
   }
 }
 
@@ -260,7 +328,27 @@ class ElevatorPassengerBedMan extends ElevatorPassenger {
   }
 
   constructor(game: Phaser.Game) {
-    super(game, ElevatorPassengerType.Gift)
+    super(game, ElevatorPassengerType.BedMan, 'passanger-bedman')
+    this.waitingFloor = 3
+    this.destFloor = 10
+  }
+}
+
+/**
+ * ElevatorPassengerCoffee
+ */
+class ElevatorPassengerCoffee extends ElevatorPassenger {
+  
+  speakPermission: ElevatorPassengerSpeakPermission = {
+    whichFloor: false,
+    howsTheWork: false,
+    whatsTheWeather: false,
+    howAreYou: false,
+  }
+
+  constructor(game: Phaser.Game) {
+    super(game, ElevatorPassengerType.Gift, 'passangers-coffee')
+    this.waitingFloor = -1
   }
 }
 
@@ -313,12 +401,27 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     var passengers: ElevatorPassenger[] = []
     switch (type) {
       case ElevatorPassengerType.Coffee:
-        for (var index = 1; index <= 13; index++) {
-          var passenger = this.add(new ElevatorPassenger(this.game, type))
+        for (var floor = 1; floor <= 13; floor++) {
+          var passenger: ElevatorPassengerCoffee = this.add(new ElevatorPassengerCoffee(this.game))
+          passenger.destFloor = floor
           passengers.push(passenger)
         }
         break
       case ElevatorPassengerType.Gift:
+        for (var index = 0; index < 3; index++) {
+          passengers.push(this.add(new ElevatorPassengerGift(this.game, index)))
+        }
+        break
+      case ElevatorPassengerType.Chair:
+        passengers.push(this.add(new ElevatorPassengerChair(this.game)))
+        break
+      case ElevatorPassengerType.BedMan:
+        passengers.push(this.add(new ElevatorPassengerBedMan(this.game)))
+        break
+      case ElevatorPassengerType.Manager:
+        passengers.push(this.add(new ElevatorPassengerManager(this.game)))
+        break
+      case ElevatorPassengerType.Normal:
         
     }
     return passengers
