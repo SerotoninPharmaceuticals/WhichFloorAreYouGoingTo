@@ -382,7 +382,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
 
   generatePassengersInLoop() {
     if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
-      console.log('generate passengers')
+      this.generatePassangersByType(ElevatorPassengerType.Normal)
     }
   }
   
@@ -457,13 +457,39 @@ class ElevatorController {
   
   panelPressed(buttonNumber: number) {
     this.human.performPressAction(() => {
-      this.indicator.go(ElevatorDirection.Up)
       this.panel.pressByButtonNumber(buttonNumber)
+      if (this.indicator.direction == ElevatorDirection.Stop) {
+        this.updateIndicator()
+      }
     }, this)
   }
   
   updateIndicator() {
-    
+    if (this.directionUp) {
+      var floor = this.panel.closestLightButton(this.indicator.currentFloor, ElevatorDirection.Up)
+      
+      if (this.indicator.direction == ElevatorDirection.Stop && floor > 20) {
+        this.directionUp = !this.directionUp
+        this.updateIndicator()
+      } else if (floor == this.indicator.currentFloor) {
+        this.indicator.go(ElevatorDirection.Stop)
+        this.panel.dismissByButtonNumber(floor)
+      } else if (floor < 20) {
+        this.indicator.go(ElevatorDirection.Up)
+      }
+    } else {
+      var floor = this.panel.closestLightButton(this.indicator.currentFloor, ElevatorDirection.Down)
+      
+      if (this.indicator.direction == ElevatorDirection.Stop && floor > 20) {
+        this.directionUp = !this.directionUp
+        this.updateIndicator()
+      } else if (floor == this.indicator.currentFloor) {
+        this.indicator.go(ElevatorDirection.Stop)
+        this.panel.dismissByButtonNumber(floor)
+      } else if (floor < 20) {
+        this.indicator.go(ElevatorDirection.Down)
+      }
+    }
   }
 }
 
@@ -507,16 +533,16 @@ class ElevatorIndicatorScene extends ComicWindow {
     switch (direction) {
     case ElevatorDirection.Up:
       if (this.direction == ElevatorDirection.Stop) {
-        this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Circular.In)
+        this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Cubic.In)
       } else {
-        this.tweenAndNotify(this.currentFloor + 1, 700, Phaser.Easing.Linear.None)
+        this.tweenAndNotify(this.currentFloor + 1, 500, Phaser.Easing.Linear.None)
       }
       break
     case ElevatorDirection.Down:
       if (this.direction == ElevatorDirection.Stop) {
-        this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Circular.In)
+        this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Cubic.In)
       } else {
-        this.tweenAndNotify(this.currentFloor - 1, 700, Phaser.Easing.Linear.None)
+        this.tweenAndNotify(this.currentFloor - 1, 500, Phaser.Easing.Linear.None)
       }
       break
     }
@@ -539,7 +565,10 @@ class ElevatorPanelScene extends ComicWindow  {
   elevatorPanel: ElevatorPanel
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorPanelScene')
+    this.add(new Phaser.Sprite(this.game, 30, 0, 'panel-background'))
     this.elevatorPanel = this.add(new ElevatorPanel(game, this))
+    this.elevatorPanel.x = 180
+    this.elevatorPanel.y = 20
   }
 }
 
@@ -547,8 +576,10 @@ class ElevatorPanelScene extends ComicWindow  {
  * ElevatorPanelButton
  */
 class ElevatorPanelButton extends Phaser.Button {
+
   buttonNumber: number
   buttonObject: Phaser.Sprite
+
   constructor(game: Phaser.Game, x: number, y: number, buttonNumber: number) {
     super(game, x, y, 'panel-button-seat')
     this.buttonNumber = buttonNumber
@@ -591,12 +622,31 @@ class ElevatorPanel extends Phaser.Group {
     var self = this
     this.controlButtons = []
     for (var i = -1; i <= 13; i++) {
-      let button: ElevatorPanelButton = this.add(new ElevatorPanelButton(this.game, i < 7 ? 40 : 88, i < 7 ? 80 + i * 48 : 80 - 7 * 48 + i * 48, i))
+      let button: ElevatorPanelButton = this.add(new ElevatorPanelButton(this.game, i < 7 ? 0 : 48, i < 7 ? 48 + i * 48 : 48 - 7 * 48 + i * 48, i))
       this.controlButtons.push(button)
       button.onInputDown.add(() => {
         self.controlSingal.dispatch(button.buttonNumber)
       })
     }
+  }
+  
+  closestLightButton(floor: number, direction: ElevatorDirection): number {
+    switch (direction) {
+      case ElevatorDirection.Up:
+        for (var index = floor + 1; index < this.controlButtons.length; index++) {
+          if (this.controlButtons[index].lighted) {
+            return this.controlButtons[index].buttonNumber
+          }
+        }
+        break
+      case ElevatorDirection.Down:
+        for (var index = floor + 1; index >= 0; index--) {
+          if (this.controlButtons[index].lighted) {
+            return this.controlButtons[index].buttonNumber
+          }
+        }
+    }
+    return 65536
   }
 
   dismissByButtonNumber(buttonNumber: number) {
@@ -795,6 +845,7 @@ class WhichFloor {
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
     this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40)
     this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15)
+    this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'))
   }
   
   scene_elevatorHuman: ElevatorHumanScene
