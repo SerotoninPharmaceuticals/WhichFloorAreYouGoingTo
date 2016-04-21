@@ -303,7 +303,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     }
     generatePassengersInLoop() {
         if (Math.random() * Phaser.Timer.SECOND < this.duration / 5) {
-            this.generatePassangersByType(ElevatorPassengerType.Normal);
+            this.passengerGenerateSignal.dispatch(this.generatePassangersByType(ElevatorPassengerType.Normal));
         }
     }
     expelAllPassangers() {
@@ -349,7 +349,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
  * ElevatorController
  */
 class ElevatorController {
-    constructor(indicator, panel, human) {
+    constructor(game, indicator, panel, human, panelScene) {
         this.currentFloor = 0;
         this.destFloor = 0;
         this.directionUp = true;
@@ -358,13 +358,45 @@ class ElevatorController {
             false, false, false, false, false,
             false, false, false, false, false
         ];
+        this.game = game;
         this.indicator = indicator;
         this.panel = panel;
         this.human = human;
+        this.panelScene = panelScene;
+        this.panelScene.openCloseSignal.add(this.openCloseDoor, this);
         this.panel.controlSingal.add(this.panelPressed, this);
-        this.indicator.arriveSignal.add(() => {
-            this.updateIndicator();
+        this.indicator.arriveSignal.add(this.floorReached, this);
+    }
+    floorReached() {
+        if (this.updateIndicator()) {
+            this.openCloseDoor('open');
+        }
+    }
+    waitAndCloseDoor() {
+        if (this.closeDoorTimer) {
+            this.closeDoorTimer.destroy();
+        }
+        this.closeDoorTimer = this.game.time.create(true);
+        this.closeDoorTimer.add(Phaser.Timer.SECOND * 3, () => {
+            this.openCloseDoor('close');
         }, this);
+        this.closeDoorTimer.start();
+    }
+    openCloseDoor(action) {
+        if (this.indicator.direction != ElevatorDirection.Stop) {
+            return;
+        }
+        if (action == 'open') {
+            this.panelScene.openDoor(this.waitAndCloseDoor, this);
+        }
+        else {
+            if (this.closeDoorTimer) {
+                this.closeDoorTimer.destroy();
+            }
+            this.panelScene.closeDoor(() => {
+                this.updateIndicator();
+            }, this);
+        }
     }
     panelPressed(buttonNumber) {
         this.human.performPressAction(() => {
@@ -375,6 +407,13 @@ class ElevatorController {
         }, this);
     }
     updateIndicator() {
+        if (!this.panelScene.doorIsClosed) {
+            return;
+        }
+        if (!this.panel.hasLightButton) {
+            this.indicator.go(ElevatorDirection.Stop);
+            return;
+        }
         if (this.directionUp) {
             var floor = this.panel.closestLightButton(this.indicator.currentFloor, ElevatorDirection.Up);
             if (this.indicator.direction == ElevatorDirection.Stop && floor > 20) {
@@ -384,6 +423,7 @@ class ElevatorController {
             else if (floor == this.indicator.currentFloor) {
                 this.indicator.go(ElevatorDirection.Stop);
                 this.panel.dismissByButtonNumber(floor);
+                return true;
             }
             else if (floor < 20) {
                 this.indicator.go(ElevatorDirection.Up);
@@ -398,11 +438,13 @@ class ElevatorController {
             else if (floor == this.indicator.currentFloor) {
                 this.indicator.go(ElevatorDirection.Stop);
                 this.panel.dismissByButtonNumber(floor);
+                return true;
             }
             else if (floor < 20) {
                 this.indicator.go(ElevatorDirection.Down);
             }
         }
+        return false;
     }
 }
 var ElevatorDirection;
@@ -468,10 +510,52 @@ class ElevatorIndicatorScene extends ComicWindow {
 class ElevatorPanelScene extends ComicWindow {
     constructor(game) {
         super(game, 'ElevatorPanelScene');
+        this.door = this.add(new Phaser.Sprite(this.game, 0, 40, 'door'));
         this.add(new Phaser.Sprite(this.game, 30, 0, 'panel-background'));
         this.elevatorPanel = this.add(new ElevatorPanel(game, this));
         this.elevatorPanel.x = 180;
         this.elevatorPanel.y = 20;
+        this.openCloseSignal = new Phaser.Signal();
+        this.openButton = this.add(new Phaser.Button(this.game, 20, 20, 'open-close-buttons'));
+        this.openButton.frame = 1;
+        this.openButton.onInputDown.add(() => {
+            this.openCloseSignal.dispatch('open');
+        }, this);
+        this.closeButton = this.add(new Phaser.Button(this.game, 60, 20, 'open-close-buttons'));
+        this.closeButton.onInputDown.add(() => {
+            this.openCloseSignal.dispatch('close');
+        }, this);
+    }
+    openDoor(finishedClosure, context) {
+        if (this.openTween) {
+            return;
+        }
+        if (this.closeTween) {
+            this.closeTween.stop(false);
+            this.closeTween = null;
+        }
+        this.openTween = this.game.add.tween(this.door).to({ x: 20 }, 700, Phaser.Easing.Circular.In).start();
+        this.openTween
+            .onComplete.add(finishedClosure, context);
+        this.openTween
+            .onComplete.add(() => {
+            this.openTween = null;
+        }, this);
+    }
+    closeDoor(finishedClosure, context) {
+        if (this.openTween || this.closeTween) {
+            return;
+        }
+        this.closeTween = this.game.add.tween(this.door).to({ x: 0 }, 700, Phaser.Easing.Circular.In).start();
+        this.closeTween
+            .onComplete.add(finishedClosure, context);
+        this.closeTween
+            .onComplete.add(() => {
+            this.closeTween = null;
+        }, this);
+    }
+    get doorIsClosed() {
+        return this.door.x == 0;
     }
 }
 /**
@@ -538,6 +622,14 @@ class ElevatorPanel extends Phaser.Group {
                 }
         }
         return 65536;
+    }
+    get hasLightButton() {
+        for (var index = 0; index < this.controlButtons.length; index++) {
+            if (this.controlButtons[index].lighted) {
+                return true;
+            }
+        }
+        return false;
     }
     dismissByButtonNumber(buttonNumber) {
         this.callAll('dismissByButtonNumber', null, buttonNumber);
@@ -687,9 +779,11 @@ class WhichFloor {
     }
     preload() {
         this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'));
+        this.game.load.image('door', WhichFloor.assetsPath('images/door.png'));
+        this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'));
         this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40);
         this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15);
-        this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'));
+        this.game.load.spritesheet('open-close-buttons', WhichFloor.assetsPath('images/open-close-buttons.png'), 40, 42, 2);
     }
     create() {
         this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game));
@@ -707,7 +801,7 @@ class WhichFloor {
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180);
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130);
         this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game);
-        this.controller_elevator = new ElevatorController(this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman);
+        this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel);
     }
     render() {
     }
