@@ -288,7 +288,6 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
 class ElevatorHumanResourceDept extends Phaser.Group {
     constructor(game) {
         super(game, null, 'ElevatorHumanResourceDept');
-        this.passengers = [];
         this.duration = 0.2 * Phaser.Timer.SECOND;
         this.passengerGenerateSignal = new Phaser.Signal();
         this.loopTimer = this.game.time.create(false);
@@ -316,6 +315,17 @@ class ElevatorHumanResourceDept extends Phaser.Group {
             }
         });
     }
+    grabAllPassengersAt(floor) {
+        let passengers = [];
+        for (var index = 0; index < this.children.length; index++) {
+            var passenger = this.children[index];
+            if (passenger.waitingFloor == floor) {
+                this.removeChild(passenger);
+                passengers.push(passenger);
+            }
+        }
+        return passengers;
+    }
     generatePassangersByType(type) {
         var passengers = [];
         switch (type) {
@@ -341,6 +351,8 @@ class ElevatorHumanResourceDept extends Phaser.Group {
                 passengers.push(this.add(new ElevatorPassengerManager(this.game)));
                 break;
             case ElevatorPassengerType.Normal:
+                passengers.push(this.add(new ElevatorPassengerNormal(this.game)));
+                break;
         }
         return passengers;
     }
@@ -349,7 +361,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
  * ElevatorController
  */
 class ElevatorController {
-    constructor(game, indicator, panel, human, panelScene) {
+    constructor(game, indicator, panel, human, panelScene, hrDept) {
         this.currentFloor = 0;
         this.destFloor = 0;
         this.directionUp = true;
@@ -366,6 +378,12 @@ class ElevatorController {
         this.panelScene.openCloseSignal.add(this.openCloseDoor, this);
         this.panel.controlSingal.add(this.panelPressed, this);
         this.indicator.arriveSignal.add(this.floorReached, this);
+        this.hrDept = hrDept;
+        this.elevatorTheme = this.game.add.sound('audio-elevator-theme', 1, true);
+        this.elevatorTheme.play();
+        this.hrDept.passengerGenerateSignal.add(() => {
+            this.indicator.updateWaitingPassengers(this.hrDept.children);
+        }, this);
     }
     floorReached() {
         if (this.updateIndicator()) {
@@ -387,7 +405,11 @@ class ElevatorController {
             return;
         }
         if (action == 'open') {
-            this.panelScene.openDoor(this.waitAndCloseDoor, this);
+            this.panelScene.openDoor(() => {
+                this.waitAndCloseDoor();
+                this.hrDept.grabAllPassengersAt(this.indicator.currentFloor);
+                this.indicator.updateWaitingPassengers(this.hrDept.children);
+            }, this);
         }
         else {
             if (this.closeDoorTimer) {
@@ -463,11 +485,14 @@ class ElevatorIndicatorScene extends ComicWindow {
         this.direction = ElevatorDirection.Stop;
         this.arriveSignal = new Phaser.Signal();
         this.backgroundColor = 0x7c858a;
+        // Elevator box
         this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0));
         this.elevatorBox.beginFill(0xffffff, 0.5);
-        this.elevatorBox.drawRect(8, 0, 14, 15);
+        this.elevatorBox.drawRect(ElevatorIndicatorScene.containerPadding, 0, ElevatorIndicatorScene.containerWidth - ElevatorIndicatorScene.containerPadding * 2, ElevatorIndicatorScene.elevatorHeight);
         this.elevatorBox.endFill();
         this.updateToFloor(this.currentFloor);
+        // Waiting passengers sign
+        this.waitingPassengersSign = this.add(new Phaser.Graphics(game, 0, 0));
     }
     tweenAndNotify(floor, duration, easingFunc) {
         this.game.add.tween(this.elevatorBox).to({ y: this.targetHeightForFloor(floor) }, duration, easingFunc, true);
@@ -498,12 +523,25 @@ class ElevatorIndicatorScene extends ComicWindow {
         this.direction = direction;
     }
     targetHeightForFloor(floor) {
-        return (2 + 15 * 13) - floor * 15;
+        return (2 + ElevatorIndicatorScene.elevatorHeight * 13) - floor * ElevatorIndicatorScene.elevatorHeight;
     }
     updateToFloor(floor) {
         this.elevatorBox.y = this.targetHeightForFloor(floor);
     }
+    updateWaitingPassengers(passengers) {
+        var context = this.waitingPassengersSign;
+        context.clear();
+        context.beginFill(0xffffff, 0.2);
+        for (var index = 0; index < passengers.length; index++) {
+            var waitingFloor = passengers[index].waitingFloor;
+            context.drawRect(0, this.targetHeightForFloor(waitingFloor), ElevatorIndicatorScene.containerPadding - 1, ElevatorIndicatorScene.elevatorHeight);
+        }
+        context.endFill();
+    }
 }
+ElevatorIndicatorScene.elevatorHeight = 15;
+ElevatorIndicatorScene.containerWidth = 30;
+ElevatorIndicatorScene.containerPadding = 8;
 /**
  * ElevatorPanelScene
  */
@@ -778,12 +816,19 @@ class WhichFloor {
         return '/assets/' + subPath;
     }
     preload() {
+        // Images
         this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'));
         this.game.load.image('door', WhichFloor.assetsPath('images/door.png'));
         this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'));
         this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40);
         this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15);
         this.game.load.spritesheet('open-close-buttons', WhichFloor.assetsPath('images/open-close-buttons.png'), 40, 42, 2);
+        // Audios
+        this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'));
+        this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'));
+        this.game.load.audio('audio-elevator-ding', WhichFloor.assetsPath('audio/elevator-ding.ogg'));
+        this.game.load.audio('audio-elevator-theme', WhichFloor.assetsPath('audio/elevator-theme.ogg'));
+        this.game.load.audio('audio-telephone-ring', WhichFloor.assetsPath('audio/telephone-ring.ogg'));
     }
     create() {
         this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game));
@@ -801,7 +846,7 @@ class WhichFloor {
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 180);
         this.controller_dialogHost.displayElevatorDialog("Elevator! I am comming", 130);
         this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game);
-        this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel);
+        this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel, this.group_elevatorHumanResourceDept);
     }
     render() {
     }

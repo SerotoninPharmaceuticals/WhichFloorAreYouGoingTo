@@ -358,8 +358,6 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
  * An invisable sprite manager
  */
 class ElevatorHumanResourceDept extends Phaser.Group {
-  passengers: ElevatorPassenger[] = []
-  
   duration: number = 0.2 * Phaser.Timer.SECOND
   loopTimer: Phaser.Timer
 
@@ -399,6 +397,18 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     })
   }
   
+  grabAllPassengersAt(floor: number): ElevatorPassenger[] {
+    let passengers:ElevatorPassenger[] = []
+    for (var index = 0; index < this.children.length; index++) {
+      var passenger = this.children[index] as ElevatorPassenger
+      if (passenger.waitingFloor == floor) {
+        this.removeChild(passenger)
+        passengers.push(passenger)
+      }
+    }
+    return passengers
+  }
+  
   generatePassangersByType(type: ElevatorPassengerType): ElevatorPassenger[] {
     var passengers: ElevatorPassenger[] = []
     switch (type) {
@@ -424,7 +434,8 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         passengers.push(this.add(new ElevatorPassengerManager(this.game)))
         break
       case ElevatorPassengerType.Normal:
-        
+        passengers.push(this.add(new ElevatorPassengerNormal(this.game)))
+        break
     }
     return passengers
   }
@@ -434,11 +445,16 @@ class ElevatorHumanResourceDept extends Phaser.Group {
  * ElevatorController
  */
 class ElevatorController {
+  // Required injection
   game: Phaser.Game
   indicator: ElevatorIndicatorScene
   panel: ElevatorPanel
   panelScene: ElevatorPanelScene
   human: ElevatorHumanScene
+  hrDept: ElevatorHumanResourceDept
+  
+  // Self generated
+  elevatorTheme: Phaser.Sound
 
   currentFloor: number = 0
   destFloor: number = 0
@@ -449,7 +465,7 @@ class ElevatorController {
     false, false, false, false, false
     ]
 
-  constructor(game: Phaser.Game, indicator: ElevatorIndicatorScene, panel: ElevatorPanel, human: ElevatorHumanScene, panelScene: ElevatorPanelScene) {
+  constructor(game: Phaser.Game, indicator: ElevatorIndicatorScene, panel: ElevatorPanel, human: ElevatorHumanScene, panelScene: ElevatorPanelScene, hrDept: ElevatorHumanResourceDept) {
     this.game = game
     this.indicator = indicator
     this.panel = panel
@@ -458,6 +474,14 @@ class ElevatorController {
     this.panelScene.openCloseSignal.add(this.openCloseDoor, this)
     this.panel.controlSingal.add(this.panelPressed, this)
     this.indicator.arriveSignal.add(this.floorReached, this)
+    this.hrDept = hrDept
+    
+    this.elevatorTheme = this.game.add.sound('audio-elevator-theme', 1, true)
+    this.elevatorTheme.play()
+    
+    this.hrDept.passengerGenerateSignal.add(() => {
+      this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
+    }, this)
   }
   
   floorReached() {
@@ -483,7 +507,11 @@ class ElevatorController {
       return
     }
     if (action == 'open') {
-      this.panelScene.openDoor(this.waitAndCloseDoor, this)
+      this.panelScene.openDoor(() => {
+        this.waitAndCloseDoor()
+        this.hrDept.grabAllPassengersAt(this.indicator.currentFloor)
+        this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
+      }, this)
     } else {
       if (this.closeDoorTimer) {
         this.closeDoorTimer.destroy()
@@ -554,8 +582,14 @@ enum ElevatorDirection {
  * ElevatorIndicatorScene
  */
 class ElevatorIndicatorScene extends ComicWindow {
+  
+  static elevatorHeight = 15
+  static containerWidth = 30
+  static containerPadding = 8
 
   elevatorBox: Phaser.Graphics
+  
+  waitingPassengersSign: Phaser.Graphics
 
   currentFloor: number = 0
   direction: ElevatorDirection = ElevatorDirection.Stop
@@ -565,11 +599,19 @@ class ElevatorIndicatorScene extends ComicWindow {
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorIndicatorScene')
     this.backgroundColor = 0x7c858a
+    // Elevator box
     this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0))
     this.elevatorBox.beginFill(0xffffff, 0.5)
-    this.elevatorBox.drawRect(8, 0, 14, 15)
+    this.elevatorBox.drawRect(
+      ElevatorIndicatorScene.containerPadding,
+      0,
+      ElevatorIndicatorScene.containerWidth - ElevatorIndicatorScene.containerPadding * 2,
+      ElevatorIndicatorScene.elevatorHeight
+      )
     this.elevatorBox.endFill()
     this.updateToFloor(this.currentFloor)
+    // Waiting passengers sign
+    this.waitingPassengersSign = this.add(new Phaser.Graphics(game, 0, 0))
   }
   
   tweenAndNotify(floor: number, duration: number, easingFunc: Function) {
@@ -601,11 +643,22 @@ class ElevatorIndicatorScene extends ComicWindow {
   }
   
   targetHeightForFloor(floor: number) {
-    return (2 + 15 * 13) - floor * 15
+    return (2 + ElevatorIndicatorScene.elevatorHeight * 13) - floor * ElevatorIndicatorScene.elevatorHeight
   }
   
   updateToFloor(floor: number) {
     this.elevatorBox.y = this.targetHeightForFloor(floor)
+  }
+  
+  updateWaitingPassengers(passengers: ElevatorPassenger[]) {
+    var context = this.waitingPassengersSign
+    context.clear()
+    context.beginFill(0xffffff, 0.2)
+    for (var index = 0; index < passengers.length; index++) {
+      var waitingFloor = passengers[index].waitingFloor
+      context.drawRect(0, this.targetHeightForFloor(waitingFloor), ElevatorIndicatorScene.containerPadding - 1, ElevatorIndicatorScene.elevatorHeight)
+    }
+    context.endFill()
   }
 }
 
@@ -964,12 +1017,19 @@ class WhichFloor {
   }
   
   preload() {
+    // Images
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
     this.game.load.image('door', WhichFloor.assetsPath('images/door.png'))
     this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'))
     this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 40, 40)
     this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 32, 32, 15)
     this.game.load.spritesheet('open-close-buttons', WhichFloor.assetsPath('images/open-close-buttons.png'), 40, 42, 2)
+    // Audios
+    this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'))
+    this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'))
+    this.game.load.audio('audio-elevator-ding', WhichFloor.assetsPath('audio/elevator-ding.ogg'))
+    this.game.load.audio('audio-elevator-theme', WhichFloor.assetsPath('audio/elevator-theme.ogg'))
+    this.game.load.audio('audio-telephone-ring', WhichFloor.assetsPath('audio/telephone-ring.ogg'))
   }
   
   scene_elevatorHuman: ElevatorHumanScene
@@ -1006,7 +1066,14 @@ class WhichFloor {
     
     this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game)
     
-    this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel)
+    this.controller_elevator = new ElevatorController(
+      this.game,
+      this.scene_elevatorIndicator,
+      this.scene_elevatorPanel.elevatorPanel,
+      this.scene_elevatorHuman,
+      this.scene_elevatorPanel,
+      this.group_elevatorHumanResourceDept
+      )
     
   }
   
