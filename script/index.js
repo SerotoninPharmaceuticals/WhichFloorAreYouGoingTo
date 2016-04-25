@@ -215,10 +215,22 @@ class ElevatorPassengerNormal extends ElevatorPassenger {
     constructor(game) {
         super(game, ElevatorPassengerType.Normal, 'passengers-normal');
         this.frame = Math.floor(Math.random() * 8);
-        this.waitingFloor = Math.floor(0 + Math.random() * 14);
-        do {
-            this.destFloor = Math.floor(0 + Math.random() * 14);
-        } while (this.waitingFloor == this.destFloor);
+        if (Math.random() > 0.5) {
+            if (Math.random() > 0.5) {
+                this.waitingFloor = 0;
+                this.destFloor = Math.floor(1 + Math.random() * 13);
+            }
+            else {
+                this.destFloor = 0;
+                this.waitingFloor = Math.floor(1 + Math.random() * 13);
+            }
+        }
+        else {
+            this.waitingFloor = Math.floor(0 + Math.random() * 14);
+            do {
+                this.destFloor = Math.floor(0 + Math.random() * 14);
+            } while (this.waitingFloor == this.destFloor);
+        }
     }
 }
 /**
@@ -470,15 +482,21 @@ class ElevatorController {
         this.elevatorTheme = this.game.add.sound('audio-elevator-theme', 1, true);
         this.elevatorTheme.play();
         this.elevatorTheme.volume = 0;
+        this.indicator.directionChangeSignal.add((state) => {
+            if (state == ElevatorDirection.Stop) {
+                this.elevatorTheme.fadeOut(400);
+            }
+            else {
+                this.elevatorTheme.fadeIn(400);
+            }
+        }, this);
         this.hrDept.passengerGenerateSignal.add((passengers) => {
             this.indicator.updateWaitingPassengers(this.hrDept.children);
-            if (!this.panelScene.doorIsClosed) {
-                for (var index = 0; index < passengers.length; index++) {
-                    var passenger = passengers[index];
-                    if (passenger.waitingFloor == this.indicator.currentFloor) {
-                        this.openCloseDoor('open');
-                        break;
-                    }
+            for (var index = 0; index < passengers.length; index++) {
+                var passenger = passengers[index];
+                if (passenger.waitingFloor == this.indicator.currentFloor) {
+                    this.openCloseDoor('open');
+                    break;
                 }
             }
         }, this);
@@ -590,6 +608,7 @@ class ElevatorIndicatorScene extends ComicWindow {
         this.currentFloor = 0;
         this.direction = ElevatorDirection.Stop;
         this.arriveSignal = new Phaser.Signal();
+        this.directionChangeSignal = new Phaser.Signal();
         this.backgroundColor = 0x7c858a;
         // Elevator box
         this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0));
@@ -625,6 +644,9 @@ class ElevatorIndicatorScene extends ComicWindow {
                     this.tweenAndNotify(this.currentFloor - 1, 500, Phaser.Easing.Linear.None);
                 }
                 break;
+        }
+        if (this.direction != direction) {
+            this.directionChangeSignal.dispatch(direction);
         }
         this.direction = direction;
     }
