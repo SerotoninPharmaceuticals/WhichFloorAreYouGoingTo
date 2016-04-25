@@ -364,11 +364,11 @@ class ElevatorHumanResourceDept extends Phaser.Group {
             }
         });
     }
-    findAllPassengersAt(floor) {
+    findAllPassengersAt(floor, destFloor = false) {
         let passengers = [];
         for (var index = 0; index < this.children.length; index++) {
             var passenger = this.children[index];
-            if (passenger.waitingFloor == floor) {
+            if ((destFloor && passenger.destFloor == floor) || (!destFloor && passenger.waitingFloor == floor)) {
                 passengers.push(passenger);
             }
         }
@@ -425,17 +425,23 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         });
     }
     passengersArrivalAt(floor, callback, context) {
-        this.duringAnimation = true;
-        this.findAllPassengersAt(floor).forEach((passenger) => {
-            passenger.performFeawellAnimation();
-            passenger.destFloor = 65536; // To heaven
-        });
-        this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
-            this.duringAnimation = false;
-            if (callback) {
-                callback.apply(context);
-            }
-        });
+        let passengers = this.findAllPassengersAt(floor, true);
+        if (passengers.length > 0) {
+            this.duringAnimation = true;
+            passengers.forEach((passenger) => {
+                passenger.performFeawellAnimation();
+                passenger.destFloor = 65536; // To heaven
+            });
+            this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
+                this.duringAnimation = false;
+                passengers.forEach((passenger) => {
+                    this.remove(passenger);
+                });
+                if (callback) {
+                    callback.apply(context);
+                }
+            }, this);
+        }
     }
 }
 ElevatorHumanResourceDept.positionsOfPassengers = [140, 152, 160, 178, 190, 200, 210, 227, 234, 250, 260, 290, 300];
@@ -469,7 +475,7 @@ class ElevatorController {
             if (!this.panelScene.doorIsClosed) {
                 for (var index = 0; index < passengers.length; index++) {
                     var passenger = passengers[index];
-                    if (passenger.destFloor == this.indicator.currentFloor) {
+                    if (passenger.waitingFloor == this.indicator.currentFloor) {
                         this.openCloseDoor('open');
                         break;
                     }
