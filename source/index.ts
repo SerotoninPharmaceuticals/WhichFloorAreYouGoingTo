@@ -76,7 +76,6 @@ class ComicWindow extends Phaser.Group {
     }
   }
   
-  
   constructor(game: Phaser.Game, name :string = 'ComicWindow') {
     super(game, game.world, name)
     
@@ -103,13 +102,32 @@ class ElevatorHumanScene extends ComicWindow {
 
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorHumanScene')
+    this.add(new Phaser.Sprite(this.game, 0, 0, 'elevator-background'))
     this.add(new ElevatorHumanNotMachine(game, 10, 10))
     this.elevatorPassengerContainer = this.add(new ElevatorHumanResourceDept(this.game, this.game.world, false))
     this.elevatorPassengerContainer.x = 0
     this.elevatorPassengerContainer.y = 213
   }
+
   performPressAction(finished: Function, context?: any) {
     finished.apply(context? context : this)
+  }
+}
+
+/**
+ * ElevatorHumanScene
+ */
+class TelephoneScene extends ComicWindow {
+
+  light: Phaser.Sprite
+  earpiece: Phaser.Sprite
+  constructor(game: Phaser.Game) {
+    super(game, 'TelephoneScene')
+    this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone'))
+    this.light = this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone-light'))
+    this.light.alpha = 0
+    this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone', 1))
+    this.earpiece = this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone-earpiece'))
   }
 }
 
@@ -149,6 +167,8 @@ interface ElevatorPassengerSpeakPermission {
  * ElevatorPassenger
  */
 class ElevatorPassenger extends Phaser.Sprite {
+  
+  static animationDuration = 1400
 
   type: ElevatorPassengerType
   state: ElevatorPassengerState
@@ -197,6 +217,31 @@ class ElevatorPassenger extends Phaser.Sprite {
     howsTheWork: true,
     whatsTheWeather: true,
     howAreYou: true,
+  }
+  
+  _grayTint = 0x0000ff
+  
+  public get grayTint() : number {
+    return this._grayTint
+  }
+  
+  
+  public set grayTint(tint : number) {
+    this.tint = 0x010101 * Math.ceil(tint)
+    this._grayTint = tint
+  }
+  
+  
+  performIntroAnimation() {
+    this.grayTint = 0x000001
+    this.alpha = 0
+    this.game.add.tween(this).to({alpha: 1, grayTint: 0x0000ff}, ElevatorPassenger.animationDuration, Phaser.Easing.Cubic.In, true)
+  }
+  
+  performFeawellAnimation() {
+    this.grayTint = 0x0000ff
+    this.alpha = 1
+    this.game.add.tween(this).to({alpha: 0, grayTint: 0x000001}, ElevatorPassenger.animationDuration, Phaser.Easing.Cubic.Out, true)
   }
 
   constructor(game: Phaser.Game, type: ElevatorPassengerType, key: string) {
@@ -365,6 +410,7 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
 class ElevatorHumanResourceDept extends Phaser.Group {
   duration: number = 0.2 * Phaser.Timer.SECOND
   loopTimer: Phaser.Timer
+  duringAnimation: boolean = false
 
   constructor(game: Phaser.Game, world: PIXI.DisplayObjectContainer, autoGen: boolean) {
     super(game, world, 'ElevatorHumanResourceDept')
@@ -392,13 +438,22 @@ class ElevatorHumanResourceDept extends Phaser.Group {
       )
     }
   }
-  
-  expelAllNormalpassengers() {
+
+  expelAllNormalPassengers(withAnimation: boolean = false) {
     this.children.forEach((passenger: ElevatorPassenger) => {
       switch (passenger.type) {
       case ElevatorPassengerType.Normal:
       case ElevatorPassengerType.Squid:
-        this.removeChild(passenger)
+        if (withAnimation) {
+          this.duringAnimation = true
+          passenger.performFeawellAnimation()
+          this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
+            this.removeChild(passenger)
+            this.duringAnimation = false
+          }, this)
+        } else {
+          this.removeChild(passenger)
+        }
         break
       }
     })
@@ -428,7 +483,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     switch (type) {
       case ElevatorPassengerType.Coffee:
         for (var floor = 1; floor <= 13; floor++) {
-          var passenger: ElevatorPassengerCoffee = this.add(new ElevatorPassengerCoffee(this.game))
+          let passenger: ElevatorPassengerCoffee = this.add(new ElevatorPassengerCoffee(this.game))
           passenger.destFloor = floor
           passengers.push(passenger)
         }
@@ -448,10 +503,40 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         passengers.push(this.add(new ElevatorPassengerManager(this.game)))
         break
       case ElevatorPassengerType.Normal:
-        passengers.push(this.add(new ElevatorPassengerNormal(this.game)))
+        let passenger = new ElevatorPassengerNormal(this.game)
+        if (this.findAllPassengersAt(passenger.waitingFloor).length < 3) {
+          passengers.push(this.add(passenger))
+        }
         break
     }
     return passengers
+  }
+  
+  static positionsOfPassengers = [140, 152, 160, 178, 190, 200, 210, 227, 234, 250, 260, 290, 300]
+  
+  /// Returns accecpted passengers
+  transformPassengersAtFloor(exHR: ElevatorHumanResourceDept, floor: number) {
+    let accecptedPassengers = exHR.findAllPassengersAt(floor).slice(0, 8 - this.children.length)
+    accecptedPassengers.forEach((passenger) => {
+      passenger.parent.removeChild(passenger)
+      this.add(passenger)
+      passenger.x = PickOneRandomly(ElevatorHumanResourceDept.positionsOfPassengers)
+      passenger.performIntroAnimation()
+    })
+  }
+  
+  passengersArrivalAt(floor: number, callback?: Function, context?: any) {
+    this.duringAnimation = true
+    this.findAllPassengersAt(floor).forEach((passenger) => {
+      passenger.performFeawellAnimation()
+      passenger.destFloor = 65536 // To heaven
+    })
+    this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
+      this.duringAnimation = false
+      if (callback) {
+        callback.apply(context)
+      }
+    })
   }
 }
 
@@ -494,8 +579,17 @@ class ElevatorController {
     this.elevatorTheme.play()
     this.elevatorTheme.volume = 0
     
-    this.hrDept.passengerGenerateSignal.add(() => {
+    this.hrDept.passengerGenerateSignal.add((passengers) => {
       this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
+      if (!this.panelScene.doorIsClosed) {
+        for (var index = 0; index < passengers.length; index++) {
+          var passenger: ElevatorPassenger = passengers[index];
+          if (passenger.destFloor == this.indicator.currentFloor) {
+            this.openCloseDoor('open')
+            break
+          }
+        }
+      }
     }, this)
   }
   
@@ -524,19 +618,21 @@ class ElevatorController {
     if (action == 'open') {
       this.panelScene.openDoor(() => {
         this.waitAndCloseDoor()
-        this.human.elevatorPassengerContainer.addMultiple(
-          this.hrDept.grabAllPassengersAt(this.indicator.currentFloor)
-        )
-        console.log(this.human.elevatorPassengerContainer.children)
+        this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor)
+        this.human.elevatorPassengerContainer.passengersArrivalAt(this.indicator.currentFloor, () => {
+          this.openCloseDoor('open')
+        }, this)
         this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
       }, this)
     } else {
       if (this.closeDoorTimer) {
         this.closeDoorTimer.destroy()
       }
-      this.panelScene.closeDoor(() => {
-        this.updateIndicator()
-      }, this)
+      if (!this.human.elevatorPassengerContainer.duringAnimation) {
+        this.panelScene.closeDoor(() => {
+          this.updateIndicator()
+        }, this)
+      }
     }
   }
   
@@ -1050,11 +1146,22 @@ class WhichFloor {
     // Images
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
     this.game.load.image('door', WhichFloor.assetsPath('images/door.png'))
+    
+      // Panelscene
+    this.game.load.image('elevator-background', WhichFloor.assetsPath('images/elevator-background.png'))
     this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'))
     this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 60, 60)
     this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 20, 20, 15)
     this.game.load.spritesheet('open-close-buttons', WhichFloor.assetsPath('images/open-close-buttons.png'), 47, 47, 2)
+    
+      // Pssengers
     this.game.load.spritesheet('passengers-normal', WhichFloor.assetsPath('images/passengers-normal.png'), 60, 196, 8)
+    
+      // Telephone
+    this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5)
+    this.game.load.spritesheet('telephone', WhichFloor.assetsPath('images/telephone.png'), 243, 231, 2)
+    this.game.load.image('telephone-earpiece', WhichFloor.assetsPath('images/telephone-earpiece.png'))
+
     // Audios
     this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'))
     this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'))
@@ -1065,7 +1172,7 @@ class WhichFloor {
   
   scene_elevatorHuman: ElevatorHumanScene
   scene_elevatorIndicator: ElevatorIndicatorScene
-  scene_elevatorPhone: ComicWindow
+  scene_elevatorTelephone: TelephoneScene
   scene_mouth: ComicWindow
   scene_elevatorPanel: ElevatorPanelScene
   
@@ -1081,11 +1188,11 @@ class WhichFloor {
     this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game))
     this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230)
     
-    this.scene_elevatorPhone = this.game.world.add(new ComicWindow(this.game))
-    this.scene_elevatorPhone.origin = new Origin(80, 250, 234, 230)
+    this.scene_elevatorTelephone = this.game.world.add(new TelephoneScene(this.game))
+    this.scene_elevatorTelephone.origin = new Origin(80, 250, 237, 230)
     
     this.scene_mouth = this.game.world.add(new ComicWindow(this.game))
-    this.scene_mouth.origin = new Origin(323, 250, 117, 76)
+    this.scene_mouth.origin = new Origin(326, 250, 114, 76)
     
     this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game))
     this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 457)
