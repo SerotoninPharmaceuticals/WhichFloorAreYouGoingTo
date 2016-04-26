@@ -1,4 +1,14 @@
 // Which floor are you going to
+/**
+ * KeyConfig
+ */
+class KeyConfig {
+    constructor() {
+        // none
+    }
+}
+// Human:
+KeyConfig.humanAnimationInterval = 180;
 function PickOneRandomly(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
@@ -62,12 +72,23 @@ class ComicWindow extends Phaser.Group {
 /**
  * ElevatorHumanNotMachine
  */
-class ElevatorHumanNotMachine extends Phaser.Sprite {
+class ElevatorHumanNotMachine extends Phaser.Group {
     constructor(game, x, y) {
-        super(game, x, y, ElevatorHumanNotMachine.asset_key);
+        super(game, game.world, 'ElevatorHumanNotMachine');
+        this.x = x;
+        this.y = y;
+        this.human = this.add(new Phaser.Sprite(this.game, 0, 0, 'animate-human'));
+        var loopTimer = this.game.time.create(false);
+        loopTimer.loop(KeyConfig.humanAnimationInterval, () => {
+            let newFrame = 0;
+            do {
+                newFrame = Math.floor(Math.random() * 7);
+            } while (newFrame == this.human.frame);
+            this.human.frame = newFrame;
+        }, this);
+        loopTimer.start();
     }
 }
-ElevatorHumanNotMachine.asset_key = 'elevator-human';
 /**
  * ElevatorHumanScene
  */
@@ -75,7 +96,7 @@ class ElevatorHumanScene extends ComicWindow {
     constructor(game) {
         super(game, 'ElevatorHumanScene');
         this.add(new Phaser.Sprite(this.game, 0, 0, 'elevator-background'));
-        this.add(new ElevatorHumanNotMachine(game, 10, 10));
+        this.add(new ElevatorHumanNotMachine(game, 0, 84));
         this.elevatorPassengerContainer = this.add(new ElevatorHumanResourceDept(this.game, this.game.world, false));
         this.elevatorPassengerContainer.x = 0;
         this.elevatorPassengerContainer.y = 213;
@@ -357,7 +378,8 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         }
     }
     expelAllNormalPassengers(withAnimation = false) {
-        this.children.forEach((passenger) => {
+        for (var index = this.children.length - 1; index >= 0; index--) {
+            let passenger = this.children[index];
             switch (passenger.type) {
                 case ElevatorPassengerType.Normal:
                 case ElevatorPassengerType.Squid:
@@ -365,16 +387,16 @@ class ElevatorHumanResourceDept extends Phaser.Group {
                         this.duringAnimation = true;
                         passenger.performFeawellAnimation();
                         this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
-                            this.removeChild(passenger);
+                            this.remove(passenger, true);
                             this.duringAnimation = false;
                         }, this);
                     }
                     else {
-                        this.removeChild(passenger);
+                        this.remove(passenger, true);
                     }
                     break;
             }
-        });
+        }
     }
     findAllPassengersAt(floor, destFloor = false) {
         let passengers = [];
@@ -428,11 +450,27 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     }
     /// Returns accecpted passengers
     transformPassengersAtFloor(exHR, floor) {
-        let accecptedPassengers = exHR.findAllPassengersAt(floor).slice(0, 8 - this.children.length);
+        let accecptedPassengers = exHR.findAllPassengersAt(floor).slice(0, 7 - this.children.length);
+        let positionsForFlilter = ElevatorHumanResourceDept.positionsOfPassengers.slice();
+        let framesForFilter = ElevatorHumanResourceDept.passengerFrames.slice();
+        this.children.forEach((passenger) => {
+            switch (passenger.type) {
+                case ElevatorPassengerType.Normal:
+                case ElevatorPassengerType.Squid:
+                    positionsForFlilter.splice(positionsForFlilter.indexOf(passenger.x), 1);
+                    framesForFilter.splice(framesForFilter.indexOf(passenger.frame), 1);
+            }
+        });
         accecptedPassengers.forEach((passenger) => {
             passenger.parent.removeChild(passenger);
             this.add(passenger);
-            passenger.x = PickOneRandomly(ElevatorHumanResourceDept.positionsOfPassengers);
+            if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {
+                passenger.x = PickOneRandomly(positionsForFlilter);
+            }
+            else {
+                passenger.x = 210;
+            }
+            passenger.frame = PickOneRandomly(framesForFilter);
             passenger.performIntroAnimation();
         });
     }
@@ -446,17 +484,71 @@ class ElevatorHumanResourceDept extends Phaser.Group {
             });
             this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
                 this.duringAnimation = false;
-                passengers.forEach((passenger) => {
-                    this.remove(passenger);
-                });
                 if (callback) {
-                    callback.apply(context);
+                    callback.apply(context, [passengers]);
                 }
+                passengers.forEach((passenger) => {
+                    this.remove(passenger, false);
+                });
             }, this);
         }
     }
 }
 ElevatorHumanResourceDept.positionsOfPassengers = [140, 152, 160, 178, 190, 200, 210, 227, 234, 250, 260, 290, 300];
+ElevatorHumanResourceDept.passengerFrames = [0, 1, 2, 3, 4, 5, 6, 7];
+var ScheduleEventType;
+(function (ScheduleEventType) {
+    ScheduleEventType[ScheduleEventType["NormalPassengersLeave"] = 0] = "NormalPassengersLeave";
+    ScheduleEventType[ScheduleEventType["KeyPassengersLeave"] = 1] = "KeyPassengersLeave";
+})(ScheduleEventType || (ScheduleEventType = {}));
+var ScheduleState;
+(function (ScheduleState) {
+    ScheduleState[ScheduleState["managers"] = 0] = "managers";
+    ScheduleState[ScheduleState["gift"] = 1] = "gift";
+    ScheduleState[ScheduleState["chairs"] = 2] = "chairs";
+    ScheduleState[ScheduleState["bedman"] = 3] = "bedman";
+    ScheduleState[ScheduleState["coffee"] = 4] = "coffee";
+    ScheduleState[ScheduleState["credits"] = 5] = "credits";
+})(ScheduleState || (ScheduleState = {}));
+/**
+ * ElevatorSchedule
+ */
+class ElevatorSchedule {
+    constructor() {
+        this.commandSignal = new Phaser.Signal();
+        this.current = 0;
+        this.schedule = [
+            ScheduleState.managers,
+            ScheduleState.gift,
+            ScheduleState.chairs,
+            ScheduleState.bedman,
+            ScheduleState.coffee,
+            ScheduleState.credits,
+        ];
+        this.scheduleForeShadowing = [
+            1,
+            8 + Math.floor(Math.random() * 5),
+            8 + Math.floor(Math.random() * 5),
+            8 + Math.floor(Math.random() * 5),
+            8 + Math.floor(Math.random() * 5),
+            65536,
+        ];
+    }
+    receiveEvent(type) {
+        switch (type) {
+            case ScheduleEventType.NormalPassengersLeave:
+                this.scheduleForeShadowing[this.current] -= 1;
+                if (this.scheduleForeShadowing[this.current] == 0) {
+                    this.commandSignal.dispatch(this.schedule[this.current]);
+                }
+                break;
+            case ScheduleEventType.KeyPassengersLeave:
+                this.current += 1;
+                console.log('Schedule step into: ' + this.schedule[this.current]);
+                break;
+        }
+    }
+}
 /**
  * ElevatorController
  */
@@ -470,6 +562,7 @@ class ElevatorController {
             false, false, false, false, false,
             false, false, false, false, false
         ];
+        this.emergenciesPassengerType = ElevatorPassengerType.Normal;
         this.game = game;
         this.indicator = indicator;
         this.panel = panel;
@@ -500,6 +593,36 @@ class ElevatorController {
                 }
             }
         }, this);
+        this.schedule = new ElevatorSchedule();
+        this.schedule.commandSignal.add(this.specialEvent, this);
+    }
+    specialEvent(type) {
+        console.log('received:' + type);
+        this.hrDept.pause();
+        this.hrDept.expelAllNormalPassengers();
+        this.indicator.updateWaitingPassengers(this.hrDept.children);
+        switch (type) {
+            case ScheduleState.managers:
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.Manager);
+                this.emergenciesPassengerType = ElevatorPassengerType.Manager;
+                break;
+            case ScheduleState.gift:
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.Gift);
+                this.emergenciesPassengerType = ElevatorPassengerType.Gift;
+                break;
+            case ScheduleState.chairs:
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.Chair);
+                this.emergenciesPassengerType = ElevatorPassengerType.Chair;
+                break;
+            case ScheduleState.bedman:
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.BedMan);
+                this.emergenciesPassengerType = ElevatorPassengerType.BedMan;
+                break;
+            case ScheduleState.coffee:
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.Coffee);
+                this.emergenciesPassengerType = ElevatorPassengerType.Coffee;
+                break;
+        }
     }
     floorReached() {
         if (this.updateIndicator()) {
@@ -524,7 +647,39 @@ class ElevatorController {
             this.panelScene.openDoor(() => {
                 this.waitAndCloseDoor();
                 this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor);
-                this.human.elevatorPassengerContainer.passengersArrivalAt(this.indicator.currentFloor, () => {
+                this.human.elevatorPassengerContainer.passengersArrivalAt(this.indicator.currentFloor, (passengers) => {
+                    // If special passenger gone
+                    if (passengers.filter((passenger) => { if (passenger.type != ElevatorPassengerType.Normal && passenger.type != ElevatorPassengerType.Squid) {
+                        return true;
+                    }
+                    else {
+                        return false;
+                    } }).length > 0 &&
+                        this.human.elevatorPassengerContainer.children.length == 0) {
+                        this.schedule.receiveEvent(ScheduleEventType.KeyPassengersLeave);
+                        this.emergenciesPassengerType = ElevatorPassengerType.Normal;
+                        this.hrDept.resume();
+                    }
+                    // If normal passenger gone
+                    if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {
+                        return true;
+                    }
+                    else {
+                        return false;
+                    } }).length > 0) {
+                        this.schedule.receiveEvent(ScheduleEventType.NormalPassengersLeave);
+                    }
+                    // If one of the gift man gone
+                    if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Gift) {
+                        return true;
+                    }
+                    else {
+                        return false;
+                    } }).length > 0) {
+                        this.human.elevatorPassengerContainer.children.forEach((passenger, index) => {
+                            passenger.frame = index;
+                        });
+                    }
                     this.openCloseDoor('open');
                 }, this);
                 this.indicator.updateWaitingPassengers(this.hrDept.children);
@@ -954,15 +1109,26 @@ class WhichFloor {
         // Panelscene
         this.game.load.image('elevator-background', WhichFloor.assetsPath('images/elevator-background.png'));
         this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'));
+        this.game.load.image('spoon', WhichFloor.assetsPath('images/spoon.png'));
         this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 60, 60);
         this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 20, 20, 15);
         this.game.load.spritesheet('open-close-buttons', WhichFloor.assetsPath('images/open-close-buttons.png'), 47, 47, 2);
         // Pssengers
         this.game.load.spritesheet('passengers-normal', WhichFloor.assetsPath('images/passengers-normal.png'), 60, 196, 8);
+        this.game.load.image('passenger-managers', WhichFloor.assetsPath('images/passenger-managers.png'));
+        this.game.load.image('passenger-bedman', WhichFloor.assetsPath('images/passenger-bedman.png'));
+        this.game.load.image('passenger-chairs', WhichFloor.assetsPath('images/passenger-chairs.png'));
+        this.game.load.image('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'));
+        this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'));
+        this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'));
         // Telephone
         this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5);
         this.game.load.spritesheet('telephone', WhichFloor.assetsPath('images/telephone.png'), 243, 231, 2);
         this.game.load.image('telephone-earpiece', WhichFloor.assetsPath('images/telephone-earpiece.png'));
+        // Animation
+        this.game.load.spritesheet('animate-hangout', WhichFloor.assetsPath('images/animate-hangout.png'), 108, 131, 8);
+        this.game.load.spritesheet('animate-human', WhichFloor.assetsPath('images/animate-human.png'), 108, 131, 7);
+        this.game.load.spritesheet('animate-human-press', WhichFloor.assetsPath('images/animate-human-press.png'), 108, 131, 7);
         // Audios
         this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'));
         this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'));
