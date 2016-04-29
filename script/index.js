@@ -514,6 +514,7 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
             whatsTheWeather: false,
             howAreYou: false,
         };
+        this.frame = Math.floor(Math.random() * 6);
         this.waitingFloor = -1;
     }
 }
@@ -643,14 +644,14 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         accecptedPassengers.forEach((passenger) => {
             passenger.parent.removeChild(passenger);
             this.add(passenger);
-            if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {
+            if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid || passenger.type == ElevatorPassengerType.Coffee) {
                 passenger.x = PickOneRandomly(positionsForFlilter);
                 passenger.frame = PickOneRandomly(framesForFilter);
                 positionsForFlilter.splice(positionsForFlilter.indexOf(passenger.x), 1);
                 framesForFilter.splice(framesForFilter.indexOf(passenger.frame), 1);
             }
             else {
-                passenger.x = 210;
+                passenger.x = 260;
             }
             passenger.performIntroAnimation();
         });
@@ -658,17 +659,6 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     }
     passengersArrivalAt(floor, callback, context) {
         let passengers = this.findAllPassengersAt(floor, true);
-        // If one of the gift man gone
-        if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Gift) {
-            return true;
-        }
-        else {
-            return false;
-        } }).length > 0) {
-            this.children.forEach((passenger, index, array) => {
-                passenger.frame = index;
-            });
-        }
         if (passengers.length > 0) {
             this.duringAnimation = true;
             passengers.forEach((passenger) => {
@@ -684,6 +674,22 @@ class ElevatorHumanResourceDept extends Phaser.Group {
                     callback.apply(context, [passengers]);
                 }
             }, this);
+            // If one of the gift man gone
+            if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Gift) {
+                return true;
+            }
+            else {
+                return false;
+            } }).length > 0) {
+                this.children.filter((passenger) => { if (passenger.destFloor == 65536) {
+                    return false;
+                }
+                else {
+                    return true;
+                } }).forEach((passenger, index, array) => {
+                    passenger.frame = array.length - 1 - index;
+                });
+            }
         }
     }
     get passengersSpeakPermissionSummary() {
@@ -717,7 +723,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         });
     }
 }
-ElevatorHumanResourceDept.positionsOfPassengers = [140, 152, 160, 178, 190, 200, 210, 227, 234, 250, 260, 290, 300];
+ElevatorHumanResourceDept.positionsOfPassengers = [140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380];
 ElevatorHumanResourceDept.passengerFrames = [0, 1, 2, 3, 4, 5, 6, 7];
 var ScheduleEventType;
 (function (ScheduleEventType) {
@@ -741,11 +747,11 @@ class ElevatorSchedule {
         this.commandSignal = new Phaser.Signal();
         this.current = 0;
         this.schedule = [
-            ScheduleState.gift,
+            ScheduleState.coffee,
             ScheduleState.managers,
+            ScheduleState.gift,
             ScheduleState.chairs,
             ScheduleState.bedman,
-            ScheduleState.coffee,
             ScheduleState.credits,
         ];
         this.scheduleForeShadowing = [
@@ -853,14 +859,14 @@ class ElevatorController {
     }
     actionBoxInteraction(action) {
         if (action.name != 'expel') {
-            if (action.name == 'whichFloor') {
+            if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
                 this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger) => {
-                    this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 12);
+                    this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40);
                 });
             }
             else {
                 var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name)));
-                this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 12);
+                this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 40);
             }
             this.human.elevatorPassengerContainer.closePermissionFor(action.name);
         }
@@ -1624,6 +1630,7 @@ class WhichFloor {
         this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3);
         this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'));
         this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'));
+        this.game.load.image('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'));
         // Telephone
         this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5);
         this.game.load.spritesheet('telephone', WhichFloor.assetsPath('images/telephone.png'), 243, 231, 2);

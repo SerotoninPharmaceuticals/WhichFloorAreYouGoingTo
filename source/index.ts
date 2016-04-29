@@ -641,6 +641,7 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
 
   constructor(game: Phaser.Game) {
     super(game, ElevatorPassengerType.Gift, 'passengers-coffee')
+    this.frame = Math.floor(Math.random() * 6)
     this.waitingFloor = -1
   }
 }
@@ -768,7 +769,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     return passengers
   }
   
-  static positionsOfPassengers = [140, 152, 160, 178, 190, 200, 210, 227, 234, 250, 260, 290, 300]
+  static positionsOfPassengers = [140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380]
   static passengerFrames = [0, 1, 2, 3, 4, 5, 6, 7]
   
   /// Returns accecpted passengers
@@ -787,13 +788,13 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     accecptedPassengers.forEach((passenger) => {
       passenger.parent.removeChild(passenger)
       this.add(passenger)
-      if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {
+      if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid || passenger.type == ElevatorPassengerType.Coffee) {
         passenger.x = PickOneRandomly(positionsForFlilter)
         passenger.frame = PickOneRandomly(framesForFilter)
         positionsForFlilter.splice(positionsForFlilter.indexOf(passenger.x), 1)
         framesForFilter.splice(framesForFilter.indexOf(passenger.frame as number), 1)
       } else {
-        passenger.x = 210
+        passenger.x = 260
       }
       passenger.performIntroAnimation()
     })
@@ -802,14 +803,6 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   
   passengersArrivalAt(floor: number, callback?: Function, context?: any) {
     let passengers = this.findAllPassengersAt(floor, true)
-    // If one of the gift man gone
-    if (
-      passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Gift) { return true} else {return false}}).length > 0
-    ) {
-      this.children.forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
-        passenger.frame = index
-      })
-    }
     if (passengers.length > 0) {
       this.duringAnimation = true
       passengers.forEach((passenger) => {
@@ -825,6 +818,14 @@ class ElevatorHumanResourceDept extends Phaser.Group {
           callback.apply(context, [passengers])
         }
       }, this)
+      // If one of the gift man gone
+      if (
+        passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Gift) { return true} else {return false}}).length > 0
+      ) {
+        this.children.filter((passenger: ElevatorPassenger) => {if (passenger.destFloor == 65536) {return false} else {return true}}).forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
+          passenger.frame = array.length - 1 - index
+        })
+      }
     }
   }
 
@@ -884,11 +885,11 @@ class ElevatorSchedule {
   
   current = 0
   schedule: ScheduleState[] = [
-    ScheduleState.gift,
+    ScheduleState.coffee,
     ScheduleState.managers,
+    ScheduleState.gift,
     ScheduleState.chairs,
     ScheduleState.bedman,
-    ScheduleState.coffee,
     ScheduleState.credits,
   ]
   scheduleForeShadowing: number[] = [
@@ -1029,13 +1030,13 @@ class ElevatorController {
   expelWhenOpenDoor = false
   actionBoxInteraction(action) {
     if (action.name != 'expel') {
-      if (action.name == 'whichFloor') {
+      if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
         this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger: ElevatorPassenger) => {
-          this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 12)
+          this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
         })
       } else {
         var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name))) as ElevatorPassenger
-        this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 12)
+        this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 40)
       }
       this.human.elevatorPassengerContainer.closePermissionFor(action.name)
     } else {
@@ -1932,6 +1933,7 @@ class WhichFloor {
     this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3)
     this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'))
     this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'))
+    this.game.load.image('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'))
     
       // Telephone
     this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5)
