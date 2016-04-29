@@ -23865,7 +23865,7 @@ declare module Phaser {
         /**
         * The position of the displayObject on the x axis relative to the local coordinates of the parent.
         */
-        x: number;
+         x: number;
 
         /**
         * The position of the displayObject on the y axis relative to the local coordinates of the parent.
