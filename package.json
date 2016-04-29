@@ -19,10 +19,6 @@
     "url": "https://github.com/SerotoninPharmaceuticals/WhichFloorAreYouGoingTo/issues"
   },
   "homepage": "https://github.com/SerotoninPharmaceuticals/WhichFloorAreYouGoingTo#readme",
-  "devDependencies": {
-    "express": "^4.13.4"
-  },
-  "dependencies": {
-    "phaser": "^2.4.6"
-  }
+  "devDependencies": {},
+  "dependencies": {}
 }

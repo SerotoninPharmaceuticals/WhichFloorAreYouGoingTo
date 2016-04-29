@@ -5,7 +5,7 @@
 class KeyConfig {
 }
 // Human:
-KeyConfig.humanAnimationInterval = 180;
+KeyConfig.humanAnimationInterval = 150;
 function PickOneRandomly(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
@@ -109,13 +109,15 @@ class ElevatorHumanNotMachine extends Phaser.Group {
             this.game.time.events.add(800, finished, context);
         }, this);
     }
-    performhangupAction(finished, context) {
+    performHangupAction(finished, context) {
         this.busy = true;
         this.human.alpha = 0;
         this.hangup.alpha = 1;
         var instanceOfAnimation = this.hangup.play('hangup', 8, false);
-        instanceOfAnimation.onComplete.add(finished, context);
-        instanceOfAnimation.onComplete.add(() => {
+        if (finished) {
+            instanceOfAnimation.onComplete.addOnce(finished, context);
+        }
+        instanceOfAnimation.onComplete.addOnce(() => {
             this.busy = false;
             this.human.alpha = 1;
             this.hangup.alpha = 0;
@@ -133,6 +135,7 @@ class ElevatorHumanScene extends ComicWindow {
         this.elevatorPassengerContainer = this.add(new ElevatorHumanResourceDept(this.game, this.game.world, false));
         this.elevatorPassengerContainer.x = 0;
         this.elevatorPassengerContainer.y = 213;
+        this.overlayTelephone = new Phaser.Sprite(this.game, 0, 0, 'telephone-left');
     }
 }
 /**
@@ -147,6 +150,7 @@ class TelephoneScene extends ComicWindow {
         this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone', 1));
         this.earpiece = this.add(new Phaser.Sprite(this.game, -2, 0, 'telephone-earpiece'));
         this.ring = new Phaser.Sound(this.game, 'audio-telephone-ring', 1, true);
+        this.hand = this.add(new Phaser.Sprite(this.game, 80, 240, 'hand'));
     }
     ringByEventType(type) {
         this.ring.play();
@@ -157,13 +161,122 @@ class TelephoneScene extends ComicWindow {
         this.earpiece.alpha = 0;
         this.ring.stop();
     }
+    hangup() {
+        this.earpiece.alpha = 1;
+        this.performHangupAction();
+        this.game.time.events.add(800, () => {
+            this.light.alpha = 0;
+        }, this);
+    }
+    performHangupAction() {
+        this.earpiece.x = 95;
+        this.earpiece.y = 230;
+        this.game.add.tween(this.earpiece).to({ x: -2, y: 0 }, 800, Phaser.Easing.Cubic.Out).start();
+        this.hand.x = 95 - 10;
+        this.hand.y = 230 + 40;
+        this.game.add.tween(this.hand).to({ x: -2 - 10, y: 0 + 40 }, 800, Phaser.Easing.Cubic.Out, true, 0, 0, true);
+    }
 }
+/**
+ * ActionButton
+ */
+class ActionButton extends Phaser.Button {
+    constructor(game, x, y, width, action, delay) {
+        super(game, x, y - 8);
+        this.alpha = 0;
+        this.game.add.tween(this).to({ y: y, alpha: 1 }, 300, Phaser.Easing.Circular.Out, true, delay);
+        this.background = this.addChild(new Phaser.Graphics(this.game, 0, 0));
+        let text = this.addChild(new Phaser.Text(this.game, ActionButton.padding, ActionButton.padding, action.text, ActionButton.style));
+        text.wordWrapWidth = width - ActionButton.padding * 2;
+        text.lineSpacing = -6;
+        if (action.enabled) {
+            this.background.beginFill(0xeeeeee);
+        }
+        else {
+            this.background.beginFill(0xaaaaaa);
+            this.inputEnabled = false;
+        }
+        this.background.lineStyle(1, 0x000000, 0.7);
+        this.background.drawRoundedRect(0, 0, width, text.getLocalBounds().height + ActionButton.padding * 2 - 2, 2);
+        this.background.endFill();
+    }
+}
+ActionButton.style = { font: 'normal 8pt Marker Felt', fill: 0x333333, align: 'left', wordWrap: true };
+ActionButton.padding = 6;
 /**
  * ActionScene
  */
 class ActionScene extends ComicWindow {
     constructor(game) {
         super(game, 'ActionScene');
+        this.isOpen = false;
+        this.enablebackground = false;
+    }
+    open(actionList, callback, context) {
+        if (this.isOpen) {
+            this.close();
+        }
+        this.isOpen = true;
+        // this.mask = null
+        // Circles
+        var littleCircle = this.game.add.graphics(this.x + this.origin.width - 17, this.y - 22 - 8);
+        littleCircle.beginFill(0xeeeeee);
+        littleCircle.lineStyle(1, 0x444444);
+        littleCircle.drawCircle(5, 5, 7);
+        littleCircle.endFill();
+        this.game.add.tween(littleCircle).to({ y: this.y - 22 }, 300, Phaser.Easing.Circular.Out, true);
+        var bigCircle = this.game.add.graphics(this.x + this.origin.width - 16, this.y - 17 - 8);
+        this.game.time.events.add(100, () => {
+            bigCircle.beginFill(0xeeeeee);
+            bigCircle.lineStyle(1, 0x444444);
+            bigCircle.drawCircle(7, 7, 11);
+            bigCircle.endFill();
+            this.game.add.tween(bigCircle).to({ y: this.y - 17 }, 300, Phaser.Easing.Circular.Out, true);
+        }, this);
+        var hugeCircle = this.game.add.graphics(this.x + this.origin.width - 22, this.y - 10 - 8);
+        this.game.time.events.add(200, () => {
+            hugeCircle.beginFill(0xeeeeee);
+            hugeCircle.lineStyle(1, 0x444444);
+            hugeCircle.drawCircle(7, 7, 14);
+            hugeCircle.endFill();
+            this.game.add.tween(hugeCircle).to({ y: this.y - 10 }, 300, Phaser.Easing.Circular.Out, true);
+        }, this);
+        // Actions
+        let actionButtons = [];
+        let lastHeight = 0;
+        var close = this.close = () => {
+            this.isOpen = false;
+            littleCircle.destroy();
+            bigCircle.destroy();
+            hugeCircle.destroy();
+            for (var index = actionButtons.length - 1; index >= 0; index--) {
+                actionButtons[index].destroy();
+            }
+        };
+        actionList.forEach((action, index) => {
+            let button = this.add(new ActionButton(this.game, 0, lastHeight, this.origin.width, action, 300 + index * 100));
+            actionButtons.push(button);
+            lastHeight = lastHeight + 4 + button.background.height;
+            button.onInputDown.addOnce(() => {
+                actionButtons.forEach((buttonForFade, index) => {
+                    buttonForFade.inputEnabled = false;
+                    if (buttonForFade != button) {
+                        this.game.add.tween(buttonForFade).to({ alpha: 0.2 }, 300, Phaser.Easing.Circular.Out, true, index * 50);
+                    }
+                });
+                [littleCircle, bigCircle, hugeCircle].concat(actionButtons).forEach((object, index, processingArray) => {
+                    this.game.time.events.add(400 + index * 50, () => {
+                        this.game.add.tween(object).to({ alpha: 0 }, 300, Phaser.Easing.Circular.Out, true);
+                    }, this);
+                    if (processingArray.length == index + 1) {
+                        this.game.time.events.add(400 + index * 50 + 300, () => {
+                            this.close();
+                        }, this);
+                    }
+                });
+                this.game.time.events.add(400, callback, context, [action]);
+            }, this);
+        });
     }
 }
 var ElevatorPassengerType;
@@ -604,7 +717,7 @@ class ElevatorSchedule {
  * ElevatorController
  */
 class ElevatorController {
-    constructor(game, indicator, panel, human, panelScene, hrDept, dialog, telephone) {
+    constructor(game, indicator, panel, human, panelScene, hrDept, mouth, dialog, telephone, action) {
         this.currentFloor = 0;
         this.destFloor = 0;
         this.directionUp = true;
@@ -625,6 +738,8 @@ class ElevatorController {
         this.hrDept = hrDept;
         this.dialog = dialog;
         this.telephone = telephone;
+        this.mouth = mouth;
+        this.action = action;
         this.elevatorTheme = this.game.add.sound('audio-elevator-theme', 1, true);
         this.elevatorTheme.play();
         this.elevatorTheme.volume = 0;
@@ -637,6 +752,8 @@ class ElevatorController {
             }
         }, this);
         this.elevatorDing = this.game.add.sound('audio-elevator-ding', 0.3);
+        this.telephoneHangup = this.game.add.sound('audio-telephone-hangup');
+        this.telephonePickup = this.game.add.sound('audio-telephone-pickup');
         this.hrDept.passengerGenerateSignal.add((passengers) => {
             this.indicator.updateWaitingPassengers(this.hrDept.children);
             for (var index = 0; index < passengers.length; index++) {
@@ -649,6 +766,16 @@ class ElevatorController {
         }, this);
         this.schedule = new ElevatorSchedule();
         this.schedule.commandSignal.add(this.specialEvent, this);
+        this.mouth.mouth.onInputDown.add(() => {
+            this.action.open([
+                { name: 'haha', text: 'Which floor are you going to?', enabled: false },
+                { name: 'fafa', text: 'How is the work going today?', enabled: true },
+                { name: 'haha', text: 'What\'s the weather like today?', enabled: false },
+                { name: 'fafa', text: 'How are you?', enabled: true },
+            ], (action) => {
+                console.log(action);
+            });
+        }, this);
     }
     specialEvent(type) {
         console.log('received:' + type);
@@ -677,10 +804,51 @@ class ElevatorController {
                 this.emergenciesPassengerType = ElevatorPassengerType.Coffee;
                 break;
         }
-        this.telephoneEvent(type);
     }
     telephoneEvent(type) {
+        // Set set
         this.telephone.ringByEventType(type);
+        this.panelScene.add(this.panelScene.overlayTelephone);
+        this.mouth.add(this.mouth.overlayTelephone);
+        this.human.add(this.human.overlayTelephone);
+        this.panelScene.earpiece.alpha = 0;
+        var overlay = this.game.add.button(0, 0, null);
+        overlay.width = this.game.width;
+        overlay.height = this.game.height;
+        overlay.onInputDown.add(() => {
+            overlay.destroy();
+            // Set set
+            this.telephone.takePhone();
+            this.telephonePickup.play();
+            var text = 'Error';
+            switch (type) {
+                case ScheduleState.managers:
+                    text = 'Some board members need to go to the boardroom on 13th floor, go pick them up at the 3rd floor now.\nMake sure the elevator is empty when getting there, you know the rules.';
+                    break;
+                case ScheduleState.gift:
+                    text = 'A large number of corporate gifts are waiting for distribution at the basement.\nThere are more than many, and possibly blocked the gate. So have the elevator emptied before arriving.';
+                    break;
+                case ScheduleState.chairs:
+                    text = 'Several office chairs need to be relocated from 11th to 4th floor.\nExact number unknown, so get an empty elevator prepared.';
+                    break;
+                case ScheduleState.chairs:
+                    text = 'An employee from the 3rd floor needs to go to floor 10. He used to be an employee of the month or something,\nand his current situation is a little bit of, special, so get the elevator empty for him. ';
+                    break;
+                case ScheduleState.coffee:
+                    text = 'Daily rations are ready at the basement, get them dispatched at each floor, except the ground floor. Enjoy.';
+                    break;
+            }
+            this.dialog.telephoneDialog(text, () => {
+                this.telephoneHangup.play().onStop.addOnce(() => {
+                    this.telephone.hangup();
+                    this.human.human.performHangupAction();
+                    this.panelScene.remove(this.panelScene.overlayTelephone);
+                    this.panelScene.performHangupAction();
+                    this.mouth.remove(this.mouth.overlayTelephone);
+                    this.human.remove(this.human.overlayTelephone);
+                }, this);
+            }, this);
+        }, this);
     }
     floorReached() {
         if (this.updateIndicator()) {
@@ -800,7 +968,7 @@ class ElevatorController {
                             passenger.frame = index;
                         });
                     }
-                    this.openCloseDoor('open');
+                    this.openCloseDoorButtonPressed('open');
                 }, this);
                 this.indicator.updateWaitingPassengers(this.hrDept.children);
             }, this);
@@ -879,6 +1047,25 @@ var ElevatorDirection;
     ElevatorDirection[ElevatorDirection["Stop"] = 2] = "Stop";
 })(ElevatorDirection || (ElevatorDirection = {}));
 /**
+ * ElevatorMouthScene
+ */
+class ElevatorMouthScene extends ComicWindow {
+    constructor(game) {
+        super(game, 'ElevatorMouthScene');
+        this.mouth = this.add(new Phaser.Button(this.game, 0, 0, 'animate-mouth'));
+        this.mouth.scale = new Phaser.Point(1.12, 1.12);
+        this.game.time.events.add(150, () => {
+            let oldFrame = this.mouth.frame;
+            do {
+                this.mouth.frame = Math.floor(Math.random() * 9);
+            } while (this.mouth.frame == oldFrame);
+        }, this).loop = true;
+        this.speakingMouth = new Phaser.Sprite(this.game, 0, 0, 'animate-mouth-speaking');
+        this.speakingMouth.scale = new Phaser.Point(1.12, 1.12);
+        this.overlayTelephone = new Phaser.Sprite(this.game, 0, 0, 'telephone-middle');
+    }
+}
+/**
  * ElevatorIndicatorScene
  */
 class ElevatorIndicatorScene extends ComicWindow {
@@ -944,7 +1131,7 @@ class ElevatorIndicatorScene extends ComicWindow {
         context.beginFill(0xfff4aa, 0.6);
         for (var index = 0; index < passengers.length; index++) {
             var waitingFloor = passengers[index].waitingFloor;
-            context.drawRect(0, this.targetHeightForFloor(waitingFloor), ElevatorIndicatorScene.containerPadding - 1, ElevatorIndicatorScene.elevatorHeight);
+            context.drawRect(0, this.targetHeightForFloor(waitingFloor) + 1, ElevatorIndicatorScene.containerPadding - 1, ElevatorIndicatorScene.elevatorHeight - 1);
         }
         if (passengers.filter((passenger) => { if (passenger.type != ElevatorPassengerType.Normal && passenger.type != ElevatorPassengerType.Squid) {
             return true;
@@ -995,7 +1182,9 @@ class ElevatorPanelScene extends ComicWindow {
         this.closeButton.onInputDown.add(() => {
             this.openCloseSignal.dispatch('close');
         }, this);
+        this.earpiece = this.add(new Phaser.Sprite(this.game, 64, 417, 'panel-earpiece'));
         this.spoon = this.add(new Phaser.Sprite(this.game, 1000, 1000, 'spoon'));
+        this.overlayTelephone = new Phaser.Sprite(this.game, 0, 0, 'telephone-right');
         this.openAudio = new Phaser.Sound(this.game, 'audio-door-open', 1);
         this.closeAudio = new Phaser.Sound(this.game, 'audio-door-close', 1);
     }
@@ -1057,6 +1246,12 @@ class ElevatorPanelScene extends ComicWindow {
         }
         var tween = this.game.add.tween(this.spoon).to({ x: x, y: y, angle: -10 }, 600, Phaser.Easing.Cubic.Out, true, 500);
         tween.yoyo(true);
+    }
+    performHangupAction() {
+        this.earpiece.alpha = 1;
+        this.earpiece.x = 64 + 20;
+        this.earpiece.y = 417 + 74;
+        this.game.add.tween(this.earpiece).to({ x: 64, y: 417 }, 800, Phaser.Easing.Cubic.Out).start();
     }
 }
 ElevatorPanelScene.doorOffset = -170;
@@ -1273,7 +1468,11 @@ class DialogHost {
         this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay);
     }
     paradiseDialog(text) {
-        this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(470, 222), 230, 40), 2000 + text.length * 13);
+        this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(455, 222), 225, 40), 2000 + text.length * 13);
+    }
+    telephoneDialog(text, callback, context) {
+        this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(150, 300), 230, 40), 3000 + text.length * 20);
+        this.game.time.events.add(3000 + text.length * 20, callback, context);
     }
 }
 /**
@@ -1290,9 +1489,11 @@ class WhichFloor {
         // Images
         this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'));
         this.game.load.image('door', WhichFloor.assetsPath('images/door.png'));
+        this.game.load.image('hand', WhichFloor.assetsPath('images/hand.png'));
         // Panelscene
         this.game.load.image('elevator-background', WhichFloor.assetsPath('images/elevator-background.png'));
         this.game.load.image('panel-background', WhichFloor.assetsPath('images/panel-background.png'));
+        this.game.load.image('panel-earpiece', WhichFloor.assetsPath('images/panel-earpiece.png'));
         this.game.load.image('spoon', WhichFloor.assetsPath('images/spoon.png'));
         this.game.load.spritesheet('panel-button-seat', WhichFloor.assetsPath('images/panel-button-seat.png'), 60, 60);
         this.game.load.spritesheet('panel-numbers', WhichFloor.assetsPath('images/panel-numbers.png'), 20, 20, 15);
@@ -1313,33 +1514,41 @@ class WhichFloor {
         this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5);
         this.game.load.spritesheet('telephone', WhichFloor.assetsPath('images/telephone.png'), 243, 231, 2);
         this.game.load.image('telephone-earpiece', WhichFloor.assetsPath('images/telephone-earpiece.png'));
+        this.game.load.image('telephone-middle', WhichFloor.assetsPath('images/telephone-middle.png'));
+        this.game.load.image('telephone-left', WhichFloor.assetsPath('images/telephone-left.png'));
+        this.game.load.spritesheet('telephone-right', WhichFloor.assetsPath('images/telephone-right.png'), 313, 456, 3);
         // Animation
         this.game.load.spritesheet('animate-hangup', WhichFloor.assetsPath('images/animate-hangup.png'), 108, 131, 8);
         this.game.load.spritesheet('animate-human', WhichFloor.assetsPath('images/animate-human.png'), 108, 131, 7);
         this.game.load.spritesheet('animate-human-press', WhichFloor.assetsPath('images/animate-human-press.png'), 108, 131, 7);
+        // Mouth
+        this.game.load.spritesheet('animate-mouth', WhichFloor.assetsPath('images/animate-mouth.png'), 103, 67, 9);
+        this.game.load.spritesheet('animate-mouth-speaking', WhichFloor.assetsPath('images/animate-mouth-speaking.png'), 103, 67, 9);
         // Audios
         this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'));
         this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'));
         this.game.load.audio('audio-elevator-ding', WhichFloor.assetsPath('audio/elevator-ding.ogg'));
         this.game.load.audio('audio-elevator-theme', WhichFloor.assetsPath('audio/elevator-theme.ogg'));
         this.game.load.audio('audio-telephone-ring', WhichFloor.assetsPath('audio/telephone-ring.ogg'));
+        this.game.load.audio('audio-telephone-pickup', WhichFloor.assetsPath('audio/telephone-pickup.ogg'));
+        this.game.load.audio('audio-telephone-hangup', WhichFloor.assetsPath('audio/telephone-hangup.ogg'));
     }
     create() {
         this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game));
-        this.scene_elevatorHuman.origin = new Origin(40, 25, 400, 213);
+        this.scene_elevatorHuman.origin = new Origin(40, 25, 400, 212);
         this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game));
         this.scene_elevatorIndicator.origin = new Origin(40, 250, 30, 230);
         this.scene_elevatorTelephone = this.game.world.add(new TelephoneScene(this.game));
         this.scene_elevatorTelephone.origin = new Origin(80, 250, 237, 230);
-        this.scene_mouth = this.game.world.add(new ComicWindow(this.game));
-        this.scene_mouth.origin = new Origin(326, 250, 114, 76);
+        this.scene_mouth = this.game.world.add(new ElevatorMouthScene(this.game));
+        this.scene_mouth.origin = new Origin(326, 250, 114, 74);
         this.scene_elevatorPanel = this.game.world.add(new ElevatorPanelScene(this.game));
         this.scene_elevatorPanel.origin = new Origin(450, 25, 313, 455);
         this.scene_action = this.game.world.add(new ActionScene(this.game));
         this.scene_action.origin = new Origin(326, 336, 114, 144);
         this.controller_dialogHost = new DialogHost(this.game);
         this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game, null, true);
-        this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel, this.group_elevatorHumanResourceDept, this.controller_dialogHost, this.scene_elevatorTelephone);
+        this.controller_elevator = new ElevatorController(this.game, this.scene_elevatorIndicator, this.scene_elevatorPanel.elevatorPanel, this.scene_elevatorHuman, this.scene_elevatorPanel, this.group_elevatorHumanResourceDept, this.scene_mouth, this.controller_dialogHost, this.scene_elevatorTelephone, this.scene_action);
     }
     render() {
     }
