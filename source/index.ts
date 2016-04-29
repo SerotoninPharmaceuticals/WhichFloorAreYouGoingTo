@@ -640,7 +640,7 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
   }
 
   constructor(game: Phaser.Game) {
-    super(game, ElevatorPassengerType.Gift, 'passengers-coffee')
+    super(game, ElevatorPassengerType.Coffee, 'passengers-coffee')
     this.frame = Math.floor(Math.random() * 6)
     this.waitingFloor = -1
   }
@@ -774,7 +774,10 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   
   /// Returns accecpted passengers
   transformPassengersAtFloor(exHR: ElevatorHumanResourceDept, floor: number): ElevatorPassenger[] {
-    let accecptedPassengers = exHR.findAllPassengersAt(floor).slice(0, 7 - this.children.length)
+    let accecptedPassengers = exHR.findAllPassengersAt(floor)
+    if (accecptedPassengers.filter((passenger: ElevatorPassenger) => {if (passenger.type == ElevatorPassengerType.Coffee) {return true} else {return false}}).length == 0) {
+      accecptedPassengers = accecptedPassengers.slice(0, 7 - this.children.length)
+    }
     let positionsForFlilter = ElevatorHumanResourceDept.positionsOfPassengers.slice()
     let framesForFilter = ElevatorHumanResourceDept.passengerFrames.slice()
     this.children.forEach((passenger: ElevatorPassenger) => {
@@ -790,9 +793,11 @@ class ElevatorHumanResourceDept extends Phaser.Group {
       this.add(passenger)
       if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid || passenger.type == ElevatorPassengerType.Coffee) {
         passenger.x = PickOneRandomly(positionsForFlilter)
-        passenger.frame = PickOneRandomly(framesForFilter)
         positionsForFlilter.splice(positionsForFlilter.indexOf(passenger.x), 1)
-        framesForFilter.splice(framesForFilter.indexOf(passenger.frame as number), 1)
+        if (passenger.type == ElevatorPassengerType.Normal) {
+          passenger.frame = PickOneRandomly(framesForFilter)
+          framesForFilter.splice(framesForFilter.indexOf(passenger.frame as number), 1)
+        }
       } else {
         passenger.x = 260
       }
@@ -885,11 +890,11 @@ class ElevatorSchedule {
   
   current = 0
   schedule: ScheduleState[] = [
-    ScheduleState.coffee,
     ScheduleState.managers,
     ScheduleState.gift,
     ScheduleState.chairs,
     ScheduleState.bedman,
+    ScheduleState.coffee,
     ScheduleState.credits,
   ]
   scheduleForeShadowing: number[] = [
@@ -1933,7 +1938,7 @@ class WhichFloor {
     this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3)
     this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'))
     this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'))
-    this.game.load.image('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'))
+    this.game.load.spritesheet('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'), 87, 123, 6)
     
       // Telephone
     this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5)

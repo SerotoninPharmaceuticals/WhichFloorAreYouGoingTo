@@ -507,7 +507,7 @@ class ElevatorPassengerBedMan extends ElevatorPassenger {
  */
 class ElevatorPassengerCoffee extends ElevatorPassenger {
     constructor(game) {
-        super(game, ElevatorPassengerType.Gift, 'passengers-coffee');
+        super(game, ElevatorPassengerType.Coffee, 'passengers-coffee');
         this.speakPermission = {
             whichFloor: false,
             howsTheWork: false,
@@ -630,7 +630,15 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     }
     /// Returns accecpted passengers
     transformPassengersAtFloor(exHR, floor) {
-        let accecptedPassengers = exHR.findAllPassengersAt(floor).slice(0, 7 - this.children.length);
+        let accecptedPassengers = exHR.findAllPassengersAt(floor);
+        if (accecptedPassengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Coffee) {
+            return true;
+        }
+        else {
+            return false;
+        } }).length == 0) {
+            accecptedPassengers = accecptedPassengers.slice(0, 7 - this.children.length);
+        }
         let positionsForFlilter = ElevatorHumanResourceDept.positionsOfPassengers.slice();
         let framesForFilter = ElevatorHumanResourceDept.passengerFrames.slice();
         this.children.forEach((passenger) => {
@@ -646,9 +654,11 @@ class ElevatorHumanResourceDept extends Phaser.Group {
             this.add(passenger);
             if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid || passenger.type == ElevatorPassengerType.Coffee) {
                 passenger.x = PickOneRandomly(positionsForFlilter);
-                passenger.frame = PickOneRandomly(framesForFilter);
                 positionsForFlilter.splice(positionsForFlilter.indexOf(passenger.x), 1);
-                framesForFilter.splice(framesForFilter.indexOf(passenger.frame), 1);
+                if (passenger.type == ElevatorPassengerType.Normal) {
+                    passenger.frame = PickOneRandomly(framesForFilter);
+                    framesForFilter.splice(framesForFilter.indexOf(passenger.frame), 1);
+                }
             }
             else {
                 passenger.x = 260;
@@ -747,11 +757,11 @@ class ElevatorSchedule {
         this.commandSignal = new Phaser.Signal();
         this.current = 0;
         this.schedule = [
-            ScheduleState.coffee,
             ScheduleState.managers,
             ScheduleState.gift,
             ScheduleState.chairs,
             ScheduleState.bedman,
+            ScheduleState.coffee,
             ScheduleState.credits,
         ];
         this.scheduleForeShadowing = [
@@ -1630,7 +1640,7 @@ class WhichFloor {
         this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3);
         this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'));
         this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'));
-        this.game.load.image('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'));
+        this.game.load.spritesheet('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'), 87, 123, 6);
         // Telephone
         this.game.load.spritesheet('telephone-light', WhichFloor.assetsPath('images/telephone-light.png'), 243, 231, 5);
         this.game.load.spritesheet('telephone', WhichFloor.assetsPath('images/telephone.png'), 243, 231, 2);
