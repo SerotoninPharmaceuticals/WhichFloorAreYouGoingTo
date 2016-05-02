@@ -655,7 +655,6 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   
   static passengerPermittedFilter(permissionId): (value: ElevatorPassenger) => boolean {
     return (passenger: ElevatorPassenger): boolean => {
-      console.log(passenger)
       if (passenger.speakPermission[permissionId]) {
         return true
       } else {
@@ -739,7 +738,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     var passengers: ElevatorPassenger[] = []
     switch (type) {
       case ElevatorPassengerType.Coffee:
-        for (var floor = 1; floor <= 13; floor++) {
+        for (var floor = 13; floor >= 1; floor--) {
           let passenger: ElevatorPassengerCoffee = this.add(new ElevatorPassengerCoffee(this.game))
           passenger.destFloor = floor
           passengers.push(passenger)
@@ -1029,7 +1028,10 @@ class ElevatorController {
       ]
     }
     
-    this.action.open(actions, this.actionBoxInteraction, this)
+    this.action.open(actions, (action) => {
+      this.mouth.speak()
+      this.actionBoxInteraction(action)
+    }, this)
   }
   
   expelWhenOpenDoor = false
@@ -1335,10 +1337,19 @@ class ElevatorMouthScene extends ComicWindow {
   mouth: Phaser.Button
   speakingMouth: Phaser.Sprite
   
+  public set origin(origin: Origin) {
+    super.origin = origin
+    this.mouth.x = origin.width / 2
+    this.speakingMouth.x = origin.width / 2
+    this.mouth.y = origin.height / 2
+    this.speakingMouth.y = origin.height / 2
+  }
+  
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorMouthScene')
     this.mouth = this.add(new Phaser.Button(this.game, 0, 0, 'animate-mouth'))
     this.mouth.scale = new Phaser.Point(1.12, 1.12)
+    this.mouth.anchor = new Phaser.Point(0.5, 0.5)
     this.game.time.events.add(150, () => {
       let oldFrame = this.mouth.frame
       do {
@@ -1346,9 +1357,20 @@ class ElevatorMouthScene extends ComicWindow {
       } while(this.mouth.frame == oldFrame)
     }, this).loop = true
     this.speakingMouth = new Phaser.Sprite(this.game, 0, 0, 'animate-mouth-speaking')
-    this.speakingMouth.scale = new Phaser.Point(1.12, 1.12)
+    this.speakingMouth.anchor = new Phaser.Point(0.5, 0.5)
+    // this.speakingMouth.scale = new Phaser.Point(1.05, 1.05)
+    this.speakingMouth.animations.add('speak').delay = 140
     
     this.overlayTelephone = new Phaser.Sprite(this.game, 0, 0, 'telephone-middle')
+  }
+  
+  speak() {
+    this.remove(this.mouth)
+    this.add(this.speakingMouth)
+    this.speakingMouth.play('speak').onComplete.addOnce(() => {
+      this.remove(this.speakingMouth)
+      this.add(this.mouth)
+    }, this)
   }
 }
 
@@ -1936,7 +1958,6 @@ class WhichFloor {
     this.game.load.image('passenger-bedman', WhichFloor.assetsPath('images/passenger-bedman.png'))
     this.game.load.image('passenger-chairs', WhichFloor.assetsPath('images/passenger-chairs.png'))
     this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3)
-    this.game.load.image('passenger-coffee', WhichFloor.assetsPath('images/passenger-coffee.png'))
     this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'))
     this.game.load.spritesheet('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'), 87, 123, 6)
     
@@ -1956,7 +1977,7 @@ class WhichFloor {
     
       // Mouth
     this.game.load.spritesheet('animate-mouth', WhichFloor.assetsPath('images/animate-mouth.png'), 103, 67, 9)
-    this.game.load.spritesheet('animate-mouth-speaking', WhichFloor.assetsPath('images/animate-mouth-speaking.png'), 103, 67, 9)
+    this.game.load.spritesheet('animate-mouth-speaking', WhichFloor.assetsPath('images/animate-mouth-speaking.png'), 118, 78, 9)
 
     // Audios
     this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'))
