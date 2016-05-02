@@ -106,6 +106,9 @@ class ElevatorHumanNotMachine  extends Phaser.Group {
   press: Phaser.Sprite
   
   busy: boolean = false
+  
+  desk: Phaser.Sprite
+  leavingAnimation: AcrossFadingAnimation
 
   constructor(game: Phaser.Game, x: number, y: number) {
     super(game, game.world, 'ElevatorHumanNotMachine')
@@ -127,6 +130,9 @@ class ElevatorHumanNotMachine  extends Phaser.Group {
       this.human.frame = newFrame
     }, this)
     loopTimer.start()
+    
+    this.desk = new Phaser.Sprite(this.game, 0, -56, 'desk')
+    this.leavingAnimation = new AcrossFadingAnimation(this.game, null, 0, -56, 'animate-human-stand', 8, 200)
   }
 
   performPressAction(finished: Function, context?: any) {
@@ -157,6 +163,15 @@ class ElevatorHumanNotMachine  extends Phaser.Group {
     if (finished) {
       instanceOfAnimation.onComplete.addOnce(finished, context)
     }
+  }
+
+  leave() {
+    this.add(this.desk)
+    this.add(this.leavingAnimation)
+    this.leavingAnimation.play(true)
+    this.game.time.events.add(this.leavingAnimation.acrossTime, () => {
+      this.remove(this.human)
+    }, this)
   }
 }
 
@@ -738,14 +753,14 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     var passengers: ElevatorPassenger[] = []
     switch (type) {
       case ElevatorPassengerType.Coffee:
-        for (var floor = 13; floor >= 1; floor--) {
+        for (let floor = 13; floor >= 1; floor--) {
           let passenger: ElevatorPassengerCoffee = this.add(new ElevatorPassengerCoffee(this.game))
           passenger.destFloor = floor
           passengers.push(passenger)
         }
         break
       case ElevatorPassengerType.Gift:
-        for (var index = 2; index >= 0; index--) {
+        for (let index = 2; index >= 0; index--) {
           passengers.push(this.add(new ElevatorPassengerGift(this.game, index)))
         }
         break
@@ -762,6 +777,12 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         let passenger = new ElevatorPassengerNormal(this.game)
         if (this.findAllPassengersAt(passenger.waitingFloor).length < 3) {
           passengers.push(this.add(passenger))
+        }
+        break
+      case ElevatorPassengerType.Squid:
+        for (let index = 0; index < 3; index++) {
+          let passenger: ElevatorPassengerSquid = this.add(new ElevatorPassengerSquid(this.game, index))
+          passengers.push(passenger)
         }
         break
     }
@@ -897,7 +918,7 @@ class ElevatorSchedule {
     ScheduleState.credits,
   ]
   scheduleForeShadowing: number[] = [
-    1,
+    2,
     2,
     2,
     2,
@@ -998,6 +1019,9 @@ class ElevatorController {
           break
         }
       }
+      if (this._enableAutomaticControl) {
+        this.automaticPressPanelTargets()
+      }
     }, this)
     
     this.schedule = new ElevatorSchedule()
@@ -1032,6 +1056,29 @@ class ElevatorController {
       this.mouth.speak()
       this.actionBoxInteraction(action)
     }, this)
+  }
+  
+  automaticPressPanelTargets() {
+    this.human.elevatorPassengerContainer.children.forEach((passenger: ElevatorPassenger) => {
+      this.aimTarget(passenger.destFloor)
+    })
+    this.hrDept.children.forEach((passenger: ElevatorPassenger) => {
+      this.aimTarget(passenger.waitingFloor)
+    })
+  }
+  
+  _enableAutomaticControl = false
+  enableAutomaticControl() {
+    this._enableAutomaticControl = true
+  }
+  
+  leave() {
+    this.mouth.leave()
+    this.human.human.leave()
+
+    this.mouth.mouth.onInputDown.remove(this.openActionBox, this)
+    // this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this)
+    this.panel.controlSingal.remove(this.panelPressed, this)
   }
   
   expelWhenOpenDoor = false
@@ -1082,6 +1129,11 @@ class ElevatorController {
       this.hrDept.generatepassengersByType(ElevatorPassengerType.Coffee)
       this.emergenciesPassengerType = ElevatorPassengerType.Coffee
       break
+    case ScheduleState.credits:
+      this.leave()
+      this.game.time.events.add(5000, () => {
+        this.enableAutomaticControl()
+      }, this)
     }
     this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
     this.telephoneEvent(type)
@@ -1094,6 +1146,13 @@ class ElevatorController {
     // Set set
     this.telephone.ringByEventType(type)
     this.panelScene.add(this.panelScene.overlayTelephone)
+    if (type as number == 2) {
+      this.panelScene.overlayTelephone.frame = 1
+    } else if(type as number == 3) {
+      this.panelScene.overlayTelephone.frame = 2
+    } else {
+      this.panelScene.overlayTelephone.frame = 2
+    }
     this.mouth.add(this.mouth.overlayTelephone)
     this.mouth.remove(this.mouth.mouth)
     this.human.add(this.human.overlayTelephone)
@@ -1146,7 +1205,7 @@ class ElevatorController {
       this.game.time.events.add(300, () => {
         this.elevatorDing.play()
       }, this)
-      if (this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary.whichFloor && this.emergenciesPassengerType == ElevatorPassengerType.Normal) {
+      if (this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary.whichFloor && this.emergenciesPassengerType == ElevatorPassengerType.Normal && !this._enableAutomaticControl) {
         this.actionBoxInteraction({name: 'whichFloor'})
       }
       this.openCloseDoor('open')
@@ -1173,13 +1232,17 @@ class ElevatorController {
   }
   
   openCloseDoorButtonPressed(action) {
-    if (this.human.human.busy) {
-      return
-    }
-    this.human.human.performPressAction(() => {
+    if (this._enableAutomaticControl) {
       this.openCloseDoor(action)
-    }, this)
-    this.panelScene.performPressAction(action == 'open' ? 1024 : 2048)
+    } else {
+      if (this.human.human.busy) {
+        return
+      }
+      this.human.human.performPressAction(() => {
+        this.openCloseDoor(action)
+      }, this)
+      this.panelScene.performPressAction(action == 'open' ? 1024 : 2048)
+    }
   }
   
   public get isNormalPassengerOnElevator() : boolean {
@@ -1201,6 +1264,9 @@ class ElevatorController {
         if (this.emergenciesPassengerType == ElevatorPassengerType.Normal || (this.emergenciesPassengerType != ElevatorPassengerType.Normal && !this.isNormalPassengerOnElevator)) {
           if(this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor).length > 0) {
             this.refreshActionBox()
+            if (this._enableAutomaticControl) {
+              this.automaticPressPanelTargets()
+            }
           }
         } else {
           switch (this.indicator.currentFloor) {
@@ -1239,6 +1305,11 @@ class ElevatorController {
             this.human.elevatorPassengerContainer.children.length == 0
             ) {
             this.schedule.receiveEvent(ScheduleEventType.KeyPassengersLeave)
+            if(this.emergenciesPassengerType == ElevatorPassengerType.Gift) {
+              this.game.time.events.add(8000, () => {
+                this.hrDept.generatepassengersByType(ElevatorPassengerType.Squid)
+              }, this)
+            }
             this.emergenciesPassengerType = ElevatorPassengerType.Normal
             this.hrDept.resume()
           }
@@ -1246,7 +1317,8 @@ class ElevatorController {
           if (passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) { return true} else {return false}}).length > 0 ) {
             this.schedule.receiveEvent(ScheduleEventType.NormalPassengersLeave)
           }
-          if (this.hrDept.findAllPassengersAt(this.indicator.currentFloor).length > 0) {
+          // If somebody is waiting and elevator not full
+          if (this.hrDept.findAllPassengersAt(this.indicator.currentFloor).length > 0 && this.human.elevatorPassengerContainer.children.length < 13) {
             this.openCloseDoorButtonPressed('open')
           }
         }, this)
@@ -1258,7 +1330,7 @@ class ElevatorController {
       }
       if (!this.human.elevatorPassengerContainer.duringAnimation && this.panelScene.doorIsOpened) {
         this.panelScene.closeDoor(() => {
-          this.updateIndicator()
+          this.updateIndicator(true)
         }, this)
       }
     }
@@ -1272,15 +1344,19 @@ class ElevatorController {
       if (this.indicator.currentFloor == buttonNumber && this.indicator.direction == ElevatorDirection.Stop) {
         return
       }
-      this.panel.pressByButtonNumber(buttonNumber)
-      if (this.indicator.direction == ElevatorDirection.Stop) {
-        this.updateIndicator()
-      }
+      this.aimTarget(buttonNumber)
     }, this)
     this.panelScene.performPressAction(buttonNumber)
   }
   
-  updateIndicator(): boolean {
+  aimTarget(floor: number) {
+    this.panel.pressByButtonNumber(floor)
+    if (this.indicator.direction == ElevatorDirection.Stop) {
+      this.updateIndicator()
+    }
+  }
+  
+  updateIndicator(forceLeave = false): boolean {
     if(!this.panelScene.doorIsClosed) {
       return
     }
@@ -1291,7 +1367,9 @@ class ElevatorController {
     }
     
     if (this.directionUp) {
-      var floor = this.panel.closestLightButton(this.indicator.currentFloor, ElevatorDirection.Up)
+      var floor = this.panel.closestLightButton(
+        forceLeave ? this.indicator.currentFloor + 1 : this.indicator.currentFloor
+        , ElevatorDirection.Up)
       
       if (this.indicator.direction == ElevatorDirection.Stop && floor > 20) {
         this.directionUp = !this.directionUp
@@ -1304,7 +1382,9 @@ class ElevatorController {
         this.indicator.go(ElevatorDirection.Up)
       }
     } else {
-      var floor = this.panel.closestLightButton(this.indicator.currentFloor, ElevatorDirection.Down)
+      var floor = this.panel.closestLightButton(
+        forceLeave ? this.indicator.currentFloor -1 : this.indicator.currentFloor
+        , ElevatorDirection.Down)
       
       if (this.indicator.direction == ElevatorDirection.Stop && floor > 20) {
         this.directionUp = !this.directionUp
@@ -1328,6 +1408,80 @@ enum ElevatorDirection {
 }
 
 /**
+ * AcrossFadingAnimation
+ */
+class AcrossFadingAnimation extends Phaser.Group {
+  A: Phaser.Sprite
+  B: Phaser.Sprite
+  delay: number
+  frameCount: number
+  acrossTime: number
+  constructor(game: Phaser.Game, parent: PIXI.DisplayObjectContainer, x: number, y: number, key: any, frameCount: number, delay: number, acrossTime = 500) {
+    super(game, parent, 'AcrossFadingAnimation')
+    this.x = x
+    this.y = y
+    this.A = this.addChild(new Phaser.Sprite(this.game, 0, 0, key)) as Phaser.Sprite
+    this.B = this.addChild(new Phaser.Sprite(this.game, 0, 0, key)) as Phaser.Sprite
+    this.B.alpha = 0
+    
+    this.frameCount = frameCount
+    this.delay = delay
+    this.acrossTime = acrossTime
+  }
+  
+  play(fadeIn = false) {
+    this.A.alpha = 1
+    this.B.alpha = 0
+    if (fadeIn) {
+      this.A.alpha = 0
+      this.game.add.tween(this.A).to({alpha: 1}, this.acrossTime, null, true)
+    }
+    this.A.frame = 0
+    for (var index = 1; index < this.frameCount; index++) {
+      let currentIndex = index
+
+      this.game.time.events.add(
+        this.delay * index + this.acrossTime * (index - 1)
+        + (fadeIn ? this.acrossTime : 0),
+        () => {
+          
+          if (currentIndex % 2 == 1) {
+            this.B.frame = currentIndex
+          } else {
+            this.A.frame = currentIndex
+          }
+
+          // console.log(currentIndex)
+          // console.log('fadein:' + (currentIndex % 2 == 0 ? 'this.A' : 'this.B'))
+          // console.log('fadeout:' + (currentIndex % 2 == 1 ? 'this.A' : 'this.B'))
+          // console.log('A frame:' + this.A.frame)
+          // console.log('B frame: ' + this.B.frame)
+          // console.log(this.delay * currentIndex + this.acrossTime * (currentIndex - 1)
+          //   + (fadeIn ? this.acrossTime : 0) + '\n')
+          
+          this.game.add.tween(
+            currentIndex % 2 == 0 ? this.A : this.B
+          ).to(
+            {alpha: 1},
+            this.acrossTime,
+            null,
+            true
+          )
+          this.game.add.tween(
+            currentIndex % 2 == 1 ? this.A : this.B
+          ).to(
+            {alpha: 0},
+            this.acrossTime,
+            null,
+            true
+          )
+
+        }, this)
+    }
+  }
+}
+
+/**
  * ElevatorMouthScene
  */
 class ElevatorMouthScene extends ComicWindow {
@@ -1336,6 +1490,8 @@ class ElevatorMouthScene extends ComicWindow {
   
   mouth: Phaser.Button
   speakingMouth: Phaser.Sprite
+  
+  leavingAnimation: AcrossFadingAnimation
   
   public set origin(origin: Origin) {
     super.origin = origin
@@ -1362,6 +1518,16 @@ class ElevatorMouthScene extends ComicWindow {
     this.speakingMouth.animations.add('speak').delay = 140
     
     this.overlayTelephone = new Phaser.Sprite(this.game, 0, 0, 'telephone-middle')
+    
+    this.leavingAnimation = new AcrossFadingAnimation(this.game, null, 0, 0, 'animate-human-stand-middle', 4, 800)
+  }
+  
+  leave() {
+    this.add(this.leavingAnimation)
+    this.leavingAnimation.play(true)
+    this.game.time.events.add(this.leavingAnimation.acrossTime, () => {
+      this.remove(this.mouth)
+    }, this)
   }
   
   speak() {
@@ -1974,6 +2140,9 @@ class WhichFloor {
     this.game.load.spritesheet('animate-hangup', WhichFloor.assetsPath('images/animate-hangup.png'), 108, 131, 8)
     this.game.load.spritesheet('animate-human', WhichFloor.assetsPath('images/animate-human.png'), 108, 131, 7)
     this.game.load.spritesheet('animate-human-press', WhichFloor.assetsPath('images/animate-human-press.png'), 108, 131, 7)
+    this.game.load.image('desk', WhichFloor.assetsPath('images/desk.png'))
+    this.game.load.spritesheet('animate-human-stand', WhichFloor.assetsPath('images/animate-human-stand.png'), 125, 185, 8)
+    this.game.load.spritesheet('animate-human-stand-middle', WhichFloor.assetsPath('images/animate-human-stand-middle.png'), 119, 78, 4)
     
       // Mouth
     this.game.load.spritesheet('animate-mouth', WhichFloor.assetsPath('images/animate-mouth.png'), 103, 67, 9)
