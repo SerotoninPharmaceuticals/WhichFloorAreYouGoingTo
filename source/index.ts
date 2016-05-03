@@ -6,6 +6,9 @@
 class KeyConfig {
   // Human:
   static humanAnimationInterval = 150
+  
+  // Loading:
+  static loadingAnimationDuration = 8000
 }
 
 function PickOneRandomly<T>(array: T[]): T {
@@ -512,11 +515,16 @@ class ElevatorPassengerSquid extends ElevatorPassenger {
     this.destFloor = 0
     switch(this.frame) {
     case 0:
-      this.waitingFloor = 2
     case 1:
-      this.waitingFloor = 9
+      this.waitingFloor = 2
+      break
     case 2:
+    case 3:
+      this.waitingFloor = 9
+      break
+    case 4:
       this.waitingFloor = 12
+      break
     }
   }
 }
@@ -780,7 +788,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         }
         break
       case ElevatorPassengerType.Squid:
-        for (let index = 0; index < 3; index++) {
+        for (let index = 0; index < 5; index++) {
           let passenger: ElevatorPassengerSquid = this.add(new ElevatorPassengerSquid(this.game, index))
           passengers.push(passenger)
         }
@@ -923,9 +931,15 @@ class ElevatorSchedule {
     2,
     2,
     2,
-    65536,
+    2,
     // 4 + Math.floor(Math.random() * 4)
   ]
+  
+  
+  public get currentSchedule() : ScheduleState {
+    return this.schedule[this.current]
+  }
+  
 
   constructor() {
   }
@@ -1070,15 +1084,33 @@ class ElevatorController {
   _enableAutomaticControl = false
   enableAutomaticControl() {
     this._enableAutomaticControl = true
+    this.automaticPressPanelTargets()
   }
   
+  _leaved = false
   leave() {
+    if (this._leaved) {
+      return
+    }
+    this._leaved = true
     this.mouth.leave()
     this.human.human.leave()
+    if (this.action.close) {
+      this.action.close()
+    }
 
     this.mouth.mouth.onInputDown.remove(this.openActionBox, this)
     // this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this)
     this.panel.controlSingal.remove(this.panelPressed, this)
+    
+    this.game.time.events.add(5000, () => {
+      this.enableAutomaticControl()
+      var credits: Phaser.Text = this.action.add(new Phaser.Text(this.game, this.action.origin.width / 2, this.action.origin.height / 2, 'A game by:\nSerotonin\nAdWARDS\nMatsuyamamiyabi', ActionButton.style))
+      credits.align = 'center'
+      this.action.enablebackground = true
+      this.action.backgroundColor = 0xcccccc
+      credits.anchor = new Phaser.Point(0.5, 0.5)
+    }, this)
   }
   
   expelWhenOpenDoor = false
@@ -1105,7 +1137,10 @@ class ElevatorController {
   
   emergenciesPassengerType: ElevatorPassengerType = ElevatorPassengerType.Normal
   specialEvent(type: ScheduleState) {
-    console.log('received:' + type)
+    console.log('Schedule received: ' + ScheduleState[type])
+    if (type == ScheduleState.credits) {
+      return
+    }
     this.hrDept.pause()
     this.hrDept.expelAllNormalPassengers()
     switch (type) {
@@ -1129,11 +1164,6 @@ class ElevatorController {
       this.hrDept.generatepassengersByType(ElevatorPassengerType.Coffee)
       this.emergenciesPassengerType = ElevatorPassengerType.Coffee
       break
-    case ScheduleState.credits:
-      this.leave()
-      this.game.time.events.add(5000, () => {
-        this.enableAutomaticControl()
-      }, this)
     }
     this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
     this.telephoneEvent(type)
@@ -1179,7 +1209,7 @@ class ElevatorController {
       case ScheduleState.chairs:
         text = 'Several office chairs need to be relocated from 11th to 4th floor.\nExact number unknown, so get an empty elevator prepared.'
         break
-      case ScheduleState.chairs:
+      case ScheduleState.bedman:
         text = 'An employee from the 3rd floor needs to go to floor 10. He used to be an employee of the month or something,\nand his current situation is a little bit of, special, so get the elevator empty for him. '
         break
       case ScheduleState.coffee:
@@ -1220,12 +1250,12 @@ class ElevatorController {
   }
   
   closeDoorTimer: Phaser.Timer
-  private waitAndCloseDoor() {
+  private waitAndCloseDoor(delay: number = Phaser.Timer.SECOND * 4) {
     if (this.closeDoorTimer) {
       this.closeDoorTimer.destroy()
     }
     this.closeDoorTimer = this.game.time.create(true)
-    this.closeDoorTimer.add(Phaser.Timer.SECOND * 4, () => {
+    this.closeDoorTimer.add(delay, () => {
       this.openCloseDoor('close')
     }, this)
     this.closeDoorTimer.start()
@@ -1255,7 +1285,12 @@ class ElevatorController {
     }
     if (action == 'open') {
       this.panelScene.openDoor(() => {
-        this.waitAndCloseDoor()
+        if (this.indicator.currentFloor == 0 && this.schedule.currentSchedule == ScheduleState.credits) {
+          this.leave()
+          this.waitAndCloseDoor(Phaser.Timer.SECOND * 10)
+        } else {
+          this.waitAndCloseDoor()
+        }
         if (this.expelWhenOpenDoor) {
           this.human.elevatorPassengerContainer.expelAllNormalPassengers(true)
           this.expelWhenOpenDoor = false
@@ -1646,6 +1681,13 @@ class ElevatorIndicatorScene extends ComicWindow {
       context.alpha = 1
     }
     context.endFill()
+  }
+  
+  intro (duration: number, fadeInDuration) {
+    this.elevatorBox.y = this.targetHeightForFloor(13)
+    this.alpha = 0
+    this.game.add.tween(this.elevatorBox).to({y: this.targetHeightForFloor(0)}, duration, null, true)
+    this.game.add.tween(this).to({alpha: 1}, fadeInDuration, Phaser.Easing.Circular.Out, true)
   }
 }
 
@@ -2095,7 +2137,7 @@ class WhichFloor {
   game: Phaser.Game
   
   constructor() {
-    this.game = new Phaser.Game(800, 505 + WhichFloor.yOffset, Phaser.AUTO, 'content', {preload: this.preload, create: this.create, render: this.render}, true, true)
+    this.game = new Phaser.Game(800, 505 + WhichFloor.yOffset, Phaser.AUTO, 'content', {preload: this.preload, create: this.create}, true, true)
   }
   
   preload() {
@@ -2124,7 +2166,7 @@ class WhichFloor {
     this.game.load.image('passenger-bedman', WhichFloor.assetsPath('images/passenger-bedman.png'))
     this.game.load.image('passenger-chairs', WhichFloor.assetsPath('images/passenger-chairs.png'))
     this.game.load.spritesheet('passengers-gift', WhichFloor.assetsPath('images/passengers-gift.png'), 276, 188, 3)
-    this.game.load.image('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'))
+    this.game.load.spritesheet('passengers-squid', WhichFloor.assetsPath('images/passengers-squid.png'), 118, 180)
     this.game.load.spritesheet('passengers-coffee', WhichFloor.assetsPath('images/passengers-coffee.png'), 87, 123, 6)
     
       // Telephone
@@ -2191,24 +2233,37 @@ class WhichFloor {
 
     this.controller_dialogHost = new DialogHost(this.game)
     
-    this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game, null, true)
+    // Intro aniamtions set:
+    this.scene_elevatorHuman.alpha = 0
+    this.scene_elevatorTelephone.alpha = 0
+    this.scene_mouth.alpha = 0
+    this.scene_elevatorPanel.alpha = 0
     
-    this.controller_elevator = new ElevatorController(
-      this.game,
-      this.scene_elevatorIndicator,
-      this.scene_elevatorPanel.elevatorPanel,
-      this.scene_elevatorHuman,
-      this.scene_elevatorPanel,
-      this.group_elevatorHumanResourceDept,
-      this.scene_mouth,
-      this.controller_dialogHost,
-      this.scene_elevatorTelephone,
-      this.scene_action
-      )
+    this.scene_elevatorIndicator.intro(KeyConfig.loadingAnimationDuration, 800)
     
-  }
-  
-  render() {
+    this.game.add.tween(this.scene_elevatorHuman).to({alpha: 1}, 800, Phaser.Easing.Circular.Out, true, KeyConfig.loadingAnimationDuration / 5 * 1)
+    this.game.add.tween(this.scene_elevatorTelephone).to({alpha: 1}, 800, Phaser.Easing.Circular.Out, true, KeyConfig.loadingAnimationDuration / 5 * 2)
+    this.game.add.tween(this.scene_mouth).to({alpha: 1}, 800, Phaser.Easing.Circular.Out, true, KeyConfig.loadingAnimationDuration / 5 * 3)
+    this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, 800, Phaser.Easing.Circular.Out, true, KeyConfig.loadingAnimationDuration / 5 * 4)
+    
+    this.game.time.events.add(KeyConfig.loadingAnimationDuration, () => {
+    
+      this.group_elevatorHumanResourceDept = new ElevatorHumanResourceDept(this.game, null, true)
+      
+      this.controller_elevator = new ElevatorController(
+        this.game,
+        this.scene_elevatorIndicator,
+        this.scene_elevatorPanel.elevatorPanel,
+        this.scene_elevatorHuman,
+        this.scene_elevatorPanel,
+        this.group_elevatorHumanResourceDept,
+        this.scene_mouth,
+        this.controller_dialogHost,
+        this.scene_elevatorTelephone,
+        this.scene_action
+        )
+    }, this)
+    
   }
 }
 
