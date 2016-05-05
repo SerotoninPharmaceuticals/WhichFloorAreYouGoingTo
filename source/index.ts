@@ -1328,7 +1328,7 @@ class ElevatorController {
             transformed.forEach((passenger) => {
               if (Math.random() < 0.6) {
                 passenger.speakPermission.whichFloor = false
-                this.game.time.events.add(1000, () => {
+                this.game.time.events.add(1400, () => {
                   this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
                 }, this)
               }
@@ -1720,6 +1720,7 @@ class ElevatorIndicatorScene extends ComicWindow {
             context.alpha = 1
           })
         }, this)
+        this.signBlinkTimer.start()
       }
     } else if(this.signBlinkTimer) {
       this.signBlinkTimer.stop()
