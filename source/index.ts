@@ -72,7 +72,7 @@ class ComicWindow extends Phaser.Group {
   
   
   maskGraphics: Phaser.Graphics
-  enablebackground: boolean = true
+  enablebackground: boolean = false
   
   // Backgrounds
   backgroundGraphics: Phaser.Graphics
@@ -558,7 +558,7 @@ class ElevatorPassengerNormal extends ElevatorPassenger {
   constructor(game: Phaser.Game) {
     super(game, ElevatorPassengerType.Normal, 'passengers-normal')
     this.frame = Math.floor(Math.random() * 8)
-    if (Math.random() > 0.5) {
+    if (Math.random() > 0.7) {
       if (Math.random() > 0.5) {
         this.waitingFloor = 0
         this.destFloor = Math.floor(1 + Math.random() * 13)
@@ -732,7 +732,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   passengerGenerateSignal = new Phaser.Signal()
 
   generatePassengersInLoop() {
-    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 5) && this.children.length < 8) {
+    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 20) && this.children.length < 5) {
       this.passengerGenerateSignal.dispatch(
         this.generatepassengersByType(ElevatorPassengerType.Normal)
       )
@@ -1065,8 +1065,6 @@ class ElevatorController {
     this.schedule.commandSignal.add(this.specialEvent, this)
     
     this.mouth.mouth.onInputDown.add(this.openActionBox, this)
-    
-    this.leave()
   }
   
   refreshActionBox() {
@@ -1112,6 +1110,13 @@ class ElevatorController {
     this.automaticPressPanelTargets()
   }
   
+  resignFirstresponder() {
+
+    this.mouth.mouth.onInputDown.remove(this.openActionBox, this)
+    this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this)
+    this.panel.controlSingal.remove(this.panelPressed, this)
+  }
+  
   _leaved = false
   leave() {
     if (this._leaved) {
@@ -1123,18 +1128,12 @@ class ElevatorController {
     if (this.action.close) {
       this.action.close()
     }
-
-    this.mouth.mouth.onInputDown.remove(this.openActionBox, this)
-    // this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this)
-    this.panel.controlSingal.remove(this.panelPressed, this)
     
-    this.game.time.events.add(5000, () => {
+    this.game.time.events.add(7000, () => {
       this.enableAutomaticControl()
-      var credits: Phaser.Text = this.action.add(new Phaser.Text(this.game, this.action.origin.width / 2, this.action.origin.height / 2, 'A game by:\nSerotonin\nAdWARDS\nMatsuyamamiyabi', ActionButton.style))
-      credits.align = 'center'
-      this.action.enablebackground = true
-      this.action.backgroundColor = 0xcccccc
-      credits.anchor = new Phaser.Point(0.5, 0.5)
+      let credits = this.action.add(new Phaser.Sprite(this.game, 2, -8, 'credits'))
+      credits.alpha = 0
+      this.game.add.tween(credits).to({alpha: 1}, 500, null, true)
     }, this)
   }
   
@@ -1201,8 +1200,10 @@ class ElevatorController {
   
   telephoneEvent(type: ScheduleState) {
     // Set set
+    this.dialog.clearElevatorDialogs()
     this.telephone.ringByEventType(type)
     this.panelScene.add(this.panelScene.overlayTelephone)
+    this.panelScene.overlayTelephone.x = 0
     if (type as number == 2) {
       this.panelScene.overlayTelephone.frame = 1
     } else if(type as number == 3) {
@@ -1248,9 +1249,13 @@ class ElevatorController {
         this.telephoneHangup.play().onStop.addOnce(() => {
           this.telephone.hangup()
           this.human.human.performHangupAction()
+          this.panelScene.overlayTelephone.x = 1000
           this.panelScene.remove(this.panelScene.overlayTelephone)
           this.panelScene.performHangupAction()
           this.mouth.remove(this.mouth.overlayTelephone)
+          this.game.time.events.add(800, () => {
+            this.telephonePickup.play()
+          })
           // this.mouth.add(this.mouth.mouth)
           // this.mouth.mouth.inputEnabled = true
           this.human.remove(this.human.overlayTelephone)
@@ -1620,11 +1625,13 @@ class ElevatorMouthScene extends ComicWindow {
   }
   
   speak() {
-    this.remove(this.mouth)
+    // this.remove(this.mouth)
     this.add(this.speakingMouth)
+    this.speakingMouth.x = this._display_origin.width / 2
     this.speakingMouth.play('speak').onComplete.addOnce(() => {
+      this.speakingMouth.x = 1000
       this.remove(this.speakingMouth)
-      this.add(this.mouth)
+      // this.add(this.mouth)
     }, this)
   }
 }
@@ -1636,7 +1643,7 @@ class ElevatorIndicatorScene extends ComicWindow {
   
   static elevatorHeight = 15
   static containerWidth = 30
-  static containerPadding = 5
+  static containerPadding = 4
 
   elevatorBox: Phaser.Graphics
   
@@ -1649,12 +1656,13 @@ class ElevatorIndicatorScene extends ComicWindow {
 
   constructor(game: Phaser.Game) {
     super(game, 'ElevatorIndicatorScene')
+    this.enablebackground = true
     this.backgroundColor = 0x8c959a
     this.add(new Phaser.Sprite(this.game, 0, 0, 'elevator-indicator-graduation'))
     // Elevator box
     this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0))
-    this.elevatorBox.beginFill(0xffffff, 0)
-    this.elevatorBox.lineStyle(1, 0xfff4aa)
+    this.elevatorBox.beginFill(0xfff4aa, 0.3)
+    this.elevatorBox.lineStyle(1, 0xfff4aa, 0.9)
     this.elevatorBox.drawRect(
       ElevatorIndicatorScene.containerPadding,
       0,
@@ -2158,6 +2166,13 @@ class DialogHost {
     })
   }
   
+  clearElevatorDialogs() {
+    for (var index = this.elevatorDialogArea.children.length - 1; index >= 0; index--) {
+      var element = this.elevatorDialogArea.children[index] as Dialog
+      element.destroy()
+    }
+  }
+  
   displayElevatorDialog(text: string, x: number, delay: number = Phaser.Timer.SECOND * 3) {
     this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay)
   }
@@ -2200,6 +2215,7 @@ class WhichFloor {
     this.game.load.image('sp-logo', WhichFloor.assetsPath('images/sp-logo.png'))
     this.game.load.image('door', WhichFloor.assetsPath('images/door.png'))
     this.game.load.image('hand', WhichFloor.assetsPath('images/hand.png'))
+    this.game.load.image('credits', WhichFloor.assetsPath('images/credits.png'))
     
       // Panelscene
     this.game.load.image('elevator-background', WhichFloor.assetsPath('images/elevator-background.png'))
@@ -2324,7 +2340,7 @@ class WhichFloor {
       this.game.add.tween(this.scene_mouth).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 3)
       this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 4.2)
 
-      this.game.time.events.add(KeyConfig.loadingAnimationDuration + 1000, EnterTheWorld, this)
+      this.game.time.events.add(KeyConfig.loadingAnimationDuration + 2000, EnterTheWorld, this)
     }
     
   }
