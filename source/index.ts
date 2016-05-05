@@ -2175,7 +2175,7 @@ class DialogHost {
 class WhichFloor {
   
   static assetsPath(subPath: string): string {
-    return '/assets/' + subPath
+    return 'assets/' + subPath
   }
   
   static yOffset = 300

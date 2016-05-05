@@ -1830,7 +1830,7 @@ class WhichFloor {
         this.game = new Phaser.Game(800, 505 + WhichFloor.yOffset, Phaser.AUTO, 'content', { preload: this.preload, create: this.create }, true, true);
     }
     static assetsPath(subPath) {
-        return '/assets/' + subPath;
+        return 'assets/' + subPath;
     }
     preload() {
         // Images
