@@ -582,7 +582,7 @@ class ElevatorPassengerManager extends ElevatorPassenger {
   
   public get lines() : ElevatorPassengerLines {
     return {
-      whichFloor: '15th, haven\'t the telephone guy told you already?',
+      whichFloor: '13th, haven\'t the telephone guy told you already?',
       howsTheWork: 'As long as you keep the elevator running, it will be fine',
       whatsTheWeather: 'It has nothing to do with neither of our work',
       howAreYou: 'I am',
@@ -732,7 +732,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   passengerGenerateSignal = new Phaser.Signal()
 
   generatePassengersInLoop() {
-    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 20) && this.children.length < 5) {
+    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 16) && this.children.length < 5) {
       this.passengerGenerateSignal.dispatch(
         this.generatepassengersByType(ElevatorPassengerType.Normal)
       )
@@ -1221,7 +1221,7 @@ class ElevatorController {
     }
     this.mouth.add(this.mouth.overlayTelephone)
     // this.mouth.remove(this.mouth.mouth)
-    // this.mouth.mouth.inputEnabled = false
+    this.mouth.mouth.inputEnabled = false
     this.human.add(this.human.overlayTelephone)
     this.panelScene.earpiece.alpha = 0
 
@@ -1265,12 +1265,14 @@ class ElevatorController {
             this.telephonePickup.play()
           })
           // this.mouth.add(this.mouth.mouth)
-          // this.mouth.mouth.inputEnabled = true
+          this.mouth.mouth.inputEnabled = true
           this.human.remove(this.human.overlayTelephone)
         }, this)
       }, this)
     }, this)
   }
+  
+  duringOpendoorDelay = false
   
   floorReached() {
     if(this.updateIndicator()) {
@@ -1278,10 +1280,11 @@ class ElevatorController {
         this.elevatorDing.play()
       }, this)
       if (this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary.whichFloor && this.emergenciesPassengerType == ElevatorPassengerType.Normal && !this._enableAutomaticControl) {
-        this.actionBoxInteraction({name: 'whichFloor'})
+        this.human.elevatorPassengerContainer.children.forEach(this.speakWhichFloor, this)
       }
-      this.panelScene.door.x += 1
+      this.duringOpendoorDelay = true
       this.game.time.events.add(800, () => {
+        this.duringOpendoorDelay = false
         this.openCloseDoor('open')
       }, this)
     }
@@ -1307,6 +1310,9 @@ class ElevatorController {
   }
   
   openCloseDoorButtonPressed(action) {
+    if (this.duringOpendoorDelay) {
+      return
+    }
     if (this._enableAutomaticControl) {
       this.openCloseDoor(action)
     } else {
@@ -1323,8 +1329,22 @@ class ElevatorController {
   public get isNormalPassengerOnElevator() : boolean {
     return this.human.elevatorPassengerContainer.children.filter((passenger: ElevatorPassenger) => {if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {return true} else {return false}}).length != 0
   }
+  
+  speakWhichFloor(passenger: ElevatorPassenger) {
+    if (Math.random() < 0.6 && (passenger.type == ElevatorPassengerType.Normal) && passenger.destFloor != this.indicator.currentFloor && passenger.speakPermission.whichFloor) {
+      // passenger.speakPermission.whichFloor = false
+      if (!this._enableAutomaticControl) {
+        this.game.time.events.add(1400, () => {
+          this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
+        }, this)
+      }
+    }
+  }
 
   openCloseDoor(action) {
+    if (this.duringOpendoorDelay) {
+      return
+    }
     if (this.indicator.direction != ElevatorDirection.Stop && action == 'open') {
       return
     }
@@ -1345,16 +1365,7 @@ class ElevatorController {
           let transformed = this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor)
           if(transformed.length > 0) {
             // Sometimes passengers told elevator guy directly
-            transformed.forEach((passenger) => {
-              if (Math.random() < 0.6 && (passenger.type == ElevatorPassengerType.Normal)) {
-                // passenger.speakPermission.whichFloor = false
-                if (!this._enableAutomaticControl) {
-                  this.game.time.events.add(1400, () => {
-                    this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
-                  }, this)
-                }
-              }
-            })
+            transformed.forEach(this.speakWhichFloor, this)
             this.refreshActionBox()
             if (this._enableAutomaticControl) {
               this.automaticPressPanelTargets()
@@ -1439,7 +1450,7 @@ class ElevatorController {
       return
     }
     this.human.human.performPressAction(() => {
-      if (this.indicator.currentFloor == buttonNumber && this.indicator.direction == ElevatorDirection.Stop) {
+      if (this.indicator.currentFloor == buttonNumber && this.indicator.direction == ElevatorDirection.Stop && this.panelScene.doorIsClosed) {
         this.panel.pressByButtonNumber(buttonNumber)
         this.game.time.events.add(100, () => {
           this.panel.dismissByButtonNumber(buttonNumber)
@@ -1461,6 +1472,9 @@ class ElevatorController {
   
   updateIndicator(forceLeave = false): boolean {
     if(!this.panelScene.doorIsClosed) {
+      return
+    }
+    if (this.duringOpendoorDelay) {
       return
     }
     
@@ -1834,9 +1848,9 @@ class ElevatorPanelScene extends ComicWindow  {
       }
       return
     }
-    // if (this.doorIsClosed) {
+    if (this.doorIsClosed) {
       this.openAudio.play()
-    // }
+    }
     this.openTween = this.game.add.tween(this.door).to({x: ElevatorPanelScene.doorOpenOffset}, 2200, Phaser.Easing.Cubic.InOut).start()
     this.openTween
       .onComplete.add(finishedClosure, context)
@@ -2168,7 +2182,7 @@ class DialogHost {
 
   autoDissmissDialog(dialog: Dialog, delay: number) {
     this.game.time.events.add(delay, () => {
-      if (dialog.parent.constructor.name == 'DialogArea') {
+      if (dialog.parent && dialog.parent.constructor.name == 'DialogArea') {
         (dialog.parent as DialogArea).removeDialog(dialog as DialogAreaSubDialog)
       } else {
         dialog.parent.removeChild(dialog)
