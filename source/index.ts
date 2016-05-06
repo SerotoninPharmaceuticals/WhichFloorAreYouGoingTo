@@ -1186,6 +1186,12 @@ class ElevatorController {
   specialEvent(type: ScheduleState) {
     console.log('Schedule received: ' + ScheduleState[type])
     if (type == ScheduleState.credits) {
+      this.resignFirstresponder()
+      this.game.time.events.add(2000, () => {
+        if (!this.panel.controlButtons[0 + 1].lighted && !this._leaved) {
+          this.panelPressed(0)
+        }
+      })
       return
     }
     this.hrDept.pause()
