@@ -882,10 +882,6 @@ class ElevatorController {
             this.indicator.updateWaitingPassengers(this.hrDept.children);
             for (var index = 0; index < passengers.length; index++) {
                 var passenger = passengers[index];
-                if (passenger.waitingFloor == this.indicator.currentFloor && this.indicator.direction == ElevatorDirection.Stop) {
-                    this.openCloseDoor('open');
-                    break;
-                }
             }
             if (this._enableAutomaticControl) {
                 this.automaticPressPanelTargets();
