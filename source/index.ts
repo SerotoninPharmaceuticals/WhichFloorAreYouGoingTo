@@ -1344,8 +1344,9 @@ class ElevatorController {
         if (this.emergenciesPassengerType == ElevatorPassengerType.Normal || (this.emergenciesPassengerType != ElevatorPassengerType.Normal && !this.isNormalPassengerOnElevator)) {
           let transformed = this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor)
           if(transformed.length > 0) {
+            // Sometimes passengers told elevator guy directly
             transformed.forEach((passenger) => {
-              if (Math.random() < 0.6) {
+              if (Math.random() < 0.6 && (passenger.type == ElevatorPassengerType.Normal)) {
                 // passenger.speakPermission.whichFloor = false
                 if (!this._enableAutomaticControl) {
                   this.game.time.events.add(1400, () => {
