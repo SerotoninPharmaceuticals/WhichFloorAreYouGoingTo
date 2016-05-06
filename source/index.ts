@@ -862,6 +862,12 @@ class ElevatorHumanResourceDept extends Phaser.Group {
       this.duringAnimation = true
       passengers.forEach((passenger) => {
         passenger.performFeawellAnimation()
+        passenger.speakPermission = {
+          whichFloor: false,
+          howsTheWork: false,
+          whatsTheWeather: false,
+          howAreYou: false,
+        }
         passenger.destFloor = 65536 // To heaven, to prevent this func be called again on this passenger
       })
       this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
@@ -1143,7 +1149,9 @@ class ElevatorController {
       if (!this._enableAutomaticControl) {
         if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
           this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger: ElevatorPassenger) => {
-            this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
+            if (passenger.destFloor != this.indicator.currentFloor) {
+              this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
+            }
           })
         } else {
           var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name))) as ElevatorPassenger
@@ -1272,6 +1280,7 @@ class ElevatorController {
       if (this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary.whichFloor && this.emergenciesPassengerType == ElevatorPassengerType.Normal && !this._enableAutomaticControl) {
         this.actionBoxInteraction({name: 'whichFloor'})
       }
+      this.panelScene.door.x += 1
       this.game.time.events.add(800, () => {
         this.openCloseDoor('open')
       }, this)
@@ -2189,7 +2198,7 @@ class DialogHost {
       this.displayDialog(text, new Phaser.Point(150, 300 + WhichFloor.yOffset), 230, 40)
       , 3000 + text.length * 50
     )
-    this.game.time.events.add(3000 + text.length * 20, callback, context)
+    this.game.time.events.add(3000 + text.length * 50, callback, context)
   }
 }
 
