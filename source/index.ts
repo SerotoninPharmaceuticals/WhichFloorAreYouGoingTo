@@ -1666,7 +1666,7 @@ class ElevatorMouthScene extends ComicWindow {
 class ElevatorIndicatorScene extends ComicWindow {
   
   static elevatorHeight = 15
-  static containerWidth = 30
+  static containerWidth = 29
   static containerPadding = 3
 
   elevatorBox: Phaser.Graphics

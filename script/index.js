@@ -1023,10 +1023,10 @@ class ElevatorController {
         this.telephone.ringByEventType(type);
         this.panelScene.add(this.panelScene.overlayTelephone);
         this.panelScene.overlayTelephone.x = 0;
-        if (type == 2) {
+        if (type == 1) {
             this.panelScene.overlayTelephone.frame = 1;
         }
-        else if (type == 3) {
+        else if (type == 2) {
             this.panelScene.overlayTelephone.frame = 2;
         }
         else {
@@ -1538,7 +1538,7 @@ class ElevatorIndicatorScene extends ComicWindow {
     }
 }
 ElevatorIndicatorScene.elevatorHeight = 15;
-ElevatorIndicatorScene.containerWidth = 30;
+ElevatorIndicatorScene.containerWidth = 29;
 ElevatorIndicatorScene.containerPadding = 3;
 /**
  * ElevatorPanelScene
