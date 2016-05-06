@@ -877,7 +877,7 @@ class ElevatorController {
         }, this);
         this.elevatorDing = this.game.add.sound('audio-elevator-ding', 0.3);
         this.telephoneHangup = this.game.add.sound('audio-telephone-hangup', 0.3);
-        this.telephonePickup = this.game.add.sound('audio-telephone-pickup', 0.75);
+        this.telephonePickup = this.game.add.sound('audio-telephone-pickup', 0.5);
         this.hrDept.passengerGenerateSignal.add((passengers) => {
             this.indicator.updateWaitingPassengers(this.hrDept.children);
             for (var index = 0; index < passengers.length; index++) {
@@ -1034,7 +1034,7 @@ class ElevatorController {
         }
         this.mouth.add(this.mouth.overlayTelephone);
         // this.mouth.remove(this.mouth.mouth)
-        this.mouth.mouth.inputEnabled = false;
+        // this.mouth.mouth.inputEnabled = false
         this.human.add(this.human.overlayTelephone);
         this.panelScene.earpiece.alpha = 0;
         var overlay = this.game.add.button(0, 0, null);
@@ -1075,7 +1075,7 @@ class ElevatorController {
                         this.telephonePickup.play();
                     });
                     // this.mouth.add(this.mouth.mouth)
-                    this.mouth.mouth.inputEnabled = true;
+                    // this.mouth.mouth.inputEnabled = true
                     this.human.remove(this.human.overlayTelephone);
                 }, this);
             }, this);
@@ -1847,7 +1847,10 @@ class DialogHost {
     }
     autoDissmissDialog(dialog, delay) {
         this.game.time.events.add(delay, () => {
-            if (dialog.parent && dialog.parent.constructor.name == 'DialogArea') {
+            if (!dialog.parent) {
+                return;
+            }
+            if (dialog.parent.constructor.name == 'DialogArea') {
                 dialog.parent.removeDialog(dialog);
             }
             else {
