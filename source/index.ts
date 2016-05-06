@@ -1212,9 +1212,9 @@ class ElevatorController {
     this.telephone.ringByEventType(type)
     this.panelScene.add(this.panelScene.overlayTelephone)
     this.panelScene.overlayTelephone.x = 0
-    if (type as number == 2) {
+    if (type as number == 1) {
       this.panelScene.overlayTelephone.frame = 1
-    } else if(type as number == 3) {
+    } else if(type as number == 2) {
       this.panelScene.overlayTelephone.frame = 2
     } else {
       this.panelScene.overlayTelephone.frame = 0
@@ -2197,8 +2197,8 @@ class DialogHost {
     }
   }
   
-  displayElevatorDialog(text: string, x: number, delay: number = Phaser.Timer.SECOND * 3) {
-    this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay)
+  displayElevatorDialog(text: string, x: number) {
+    this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3000 + text.length * 50)
   }
   
   paradiseDialog(text: string) {

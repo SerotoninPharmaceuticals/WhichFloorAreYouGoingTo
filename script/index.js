@@ -1861,8 +1861,8 @@ class DialogHost {
             element.destroy();
         }
     }
-    displayElevatorDialog(text, x, delay = Phaser.Timer.SECOND * 3) {
-        this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), delay);
+    displayElevatorDialog(text, x) {
+        this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3000 + text.length * 50);
     }
     paradiseDialog(text) {
         this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(455, 222 + WhichFloor.yOffset), 225, 40), 2000 + text.length * 40);
