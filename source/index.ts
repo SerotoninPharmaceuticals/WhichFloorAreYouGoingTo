@@ -1050,8 +1050,8 @@ class ElevatorController {
     
     this.elevatorDing = this.game.add.sound('audio-elevator-ding', 0.3)
     
-    this.telephoneHangup = this.game.add.sound('audio-telephone-hangup', 0.5)
-    this.telephonePickup = this.game.add.sound('audio-telephone-pickup')
+    this.telephoneHangup = this.game.add.sound('audio-telephone-hangup', 0.3)
+    this.telephonePickup = this.game.add.sound('audio-telephone-pickup', 0.75)
     
     this.hrDept.passengerGenerateSignal.add((passengers) => {
       this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
@@ -1833,9 +1833,9 @@ class ElevatorPanelScene extends ComicWindow  {
       }
       return
     }
-    if (this.doorIsClosed) {
+    // if (this.doorIsClosed) {
       this.openAudio.play()
-    }
+    // }
     this.openTween = this.game.add.tween(this.door).to({x: ElevatorPanelScene.doorOpenOffset}, 2200, Phaser.Easing.Cubic.InOut).start()
     this.openTween
       .onComplete.add(finishedClosure, context)
@@ -2329,6 +2329,8 @@ class WhichFloor {
         this.scene_elevatorTelephone,
         this.scene_action
         )
+        
+      this.controller_elevator.elevatorDing.play()
     }
     
     if (location.search == '?test') {
@@ -2347,7 +2349,7 @@ class WhichFloor {
       this.game.add.tween(this.scene_elevatorHuman).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 0)
       this.game.add.tween(this.scene_elevatorTelephone).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 1.4)
       this.game.add.tween(this.scene_mouth).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 3)
-      this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 4.2)
+      this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 2.8)
 
       this.game.time.events.add(KeyConfig.loadingAnimationDuration + 2000, EnterTheWorld, this)
     }
