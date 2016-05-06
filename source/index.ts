@@ -1652,7 +1652,7 @@ class ElevatorIndicatorScene extends ComicWindow {
   
   static elevatorHeight = 15
   static containerWidth = 30
-  static containerPadding = 4
+  static containerPadding = 3
 
   elevatorBox: Phaser.Graphics
   
@@ -1670,7 +1670,7 @@ class ElevatorIndicatorScene extends ComicWindow {
     this.add(new Phaser.Sprite(this.game, 0, 0, 'elevator-indicator-graduation'))
     // Elevator box
     this.elevatorBox = this.add(new Phaser.Graphics(game, 0, 0))
-    this.elevatorBox.beginFill(0xfff4aa, 0.3)
+    this.elevatorBox.beginFill(0xfff4aa, 0.5)
     this.elevatorBox.lineStyle(1, 0xfff4aa, 0.9)
     this.elevatorBox.drawRect(
       ElevatorIndicatorScene.containerPadding,
