@@ -70,6 +70,13 @@ class ComicWindow extends Phaser.Group {
     return this._display_origin
   }
   
+  fadeIn(duration: number, delay: number, color = 0x000000) {
+    let top: Phaser.Graphics = this.add(new Phaser.Graphics(this.game, 0, 0))
+    top.beginFill(color)
+    top.drawRect(0, 0, this._display_origin.width, this._display_origin.height)
+    top.endFill()
+    this.game.add.tween(top).to({alpha: 0}, duration, null, true, delay)
+  }
   
   maskGraphics: Phaser.Graphics
   enablebackground: boolean = false
@@ -624,7 +631,7 @@ class ElevatorPassengerGift extends ElevatorPassenger {
       this.destFloor = 12
       break
     }
-    console.log(this.frame + ' frame | destFloor ' + this.destFloor)
+    // console.log(this.frame + ' frame | destFloor ' + this.destFloor)
     this.waitingFloor = -1
   }
 }
@@ -711,6 +718,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   duration: number = 0.2 * Phaser.Timer.SECOND
   loopTimer: Phaser.Timer
   duringAnimation: boolean = false
+  elevatorDong: Phaser.Sound
 
   constructor(game: Phaser.Game, world: PIXI.DisplayObjectContainer, autoGen: boolean) {
     super(game, world, 'ElevatorHumanResourceDept')
@@ -719,6 +727,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
       this.loopTimer.loop(this.duration, this.generatePassengersInLoop, this)
       this.loopTimer.start()
     }
+    this.elevatorDong = new Phaser.Sound(this.game, 'audio-elevator-dong')
   }
   
   resume() {
@@ -816,6 +825,9 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         }
         break
     }
+    if (passengers.length > 0) {
+      this.elevatorDong.play()
+    }
     return passengers
   }
   
@@ -860,7 +872,15 @@ class ElevatorHumanResourceDept extends Phaser.Group {
     let passengers = this.findAllPassengersAt(floor, true)
     if (passengers.length > 0) {
       this.duringAnimation = true
-      passengers.forEach((passenger) => {
+      passengers.forEach((passenger, index, array) => {
+        passenger.destFloor = 65536 // To heaven, to prevent this func be called again on this passenger
+        this.children.filter((passenger: ElevatorPassenger) => {if (passenger.destFloor == 65536) {return false} else {return true}}).forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
+          passenger.frame = array.length - 1 - index
+          passenger.moveUp()
+        })
+        if (passenger.type == ElevatorPassengerType.Gift) {
+          passenger.frame = this.children.length - 1 - index
+        }
         passenger.performFeawellAnimation()
         passenger.speakPermission = {
           whichFloor: false,
@@ -868,7 +888,6 @@ class ElevatorHumanResourceDept extends Phaser.Group {
           whatsTheWeather: false,
           howAreYou: false,
         }
-        passenger.destFloor = 65536 // To heaven, to prevent this func be called again on this passenger
       })
       this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
         this.duringAnimation = false
@@ -879,15 +898,6 @@ class ElevatorHumanResourceDept extends Phaser.Group {
           callback.apply(context, [passengers])
         }
       }, this)
-      // If one of the gift man gone
-      if (
-        passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Gift) { return true} else {return false}}).length > 0
-      ) {
-        this.children.filter((passenger: ElevatorPassenger) => {if (passenger.destFloor == 65536) {return false} else {return true}}).forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
-          passenger.frame = array.length - 1 - index
-          passenger.moveDown()
-        })
-      }
     }
   }
 
@@ -947,15 +957,15 @@ class ElevatorSchedule {
   
   current = 0
   schedule: ScheduleState[] = [
-    ScheduleState.managers,
     ScheduleState.gift,
+    ScheduleState.managers,
     ScheduleState.chairs,
     ScheduleState.bedman,
     ScheduleState.coffee,
     ScheduleState.credits,
   ]
   scheduleForeShadowing: number[] = [
-    2,
+    1,
     2,
     2,
     2,
@@ -1080,6 +1090,9 @@ class ElevatorController {
   }
   
   openActionBox() {
+    if (this.duringTelephone) {
+      return
+    }
     var actions: Action[] = []
     var summary = this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary
     if (this.isNormalPassengerOnElevator && this.emergenciesPassengerType != ElevatorPassengerType.Normal) {
@@ -1206,7 +1219,9 @@ class ElevatorController {
     }
   }
   
+  duringTelephone = false
   telephoneEvent(type: ScheduleState) {
+    this.duringTelephone = true
     // Set set
     this.dialog.clearElevatorDialogs()
     this.telephone.ringByEventType(type)
@@ -1255,6 +1270,7 @@ class ElevatorController {
       }
       this.dialog.telephoneDialog(text, () => {
         this.telephoneHangup.play().onStop.addOnce(() => {
+          this.duringTelephone = false
           this.telephone.hangup()
           this.human.human.performHangupAction()
           this.panelScene.overlayTelephone.x = 1000
@@ -1310,7 +1326,7 @@ class ElevatorController {
   }
   
   openCloseDoorButtonPressed(action) {
-    if (this.duringOpendoorDelay) {
+    if (this.duringOpendoorDelay || this.duringTelephone) {
       return
     }
     if (this._enableAutomaticControl) {
@@ -1446,7 +1462,7 @@ class ElevatorController {
   }
   
   panelPressed(buttonNumber: number) {
-    if (this.human.human.busy) {
+    if (this.human.human.busy || this.duringTelephone) {
       return
     }
     this.human.human.performPressAction(() => {
@@ -2292,6 +2308,7 @@ class WhichFloor {
     this.game.load.audio('audio-door-close', WhichFloor.assetsPath('audio/door-close.ogg'))
     this.game.load.audio('audio-door-open', WhichFloor.assetsPath('audio/door-open.ogg'))
     this.game.load.audio('audio-elevator-ding', WhichFloor.assetsPath('audio/elevator-ding.ogg'))
+    this.game.load.audio('audio-elevator-dong', WhichFloor.assetsPath('audio/elevator-dong.ogg'))
     this.game.load.audio('audio-elevator-theme', WhichFloor.assetsPath('audio/elevator-theme.ogg'))
     this.game.load.audio('audio-telephone-ring', WhichFloor.assetsPath('audio/telephone-ring.ogg'))
     this.game.load.audio('audio-telephone-pickup', WhichFloor.assetsPath('audio/telephone-pickup.ogg'))
@@ -2354,22 +2371,29 @@ class WhichFloor {
     if (location.search == '?test') {
       EnterTheWorld.call(this)
     } else {
-      // Intro aniamtions set:
-      this.scene_elevatorHuman.alpha = 0
-      this.scene_elevatorTelephone.alpha = 0
-      this.scene_mouth.alpha = 0
-      this.scene_elevatorPanel.alpha = 0
 
       this.scene_elevatorIndicator.intro(KeyConfig.loadingAnimationDuration, 800)
       
       let sectionTime = KeyConfig.loadingAnimationDuration / 5
-      
-      this.game.add.tween(this.scene_elevatorHuman).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 0)
-      this.game.add.tween(this.scene_elevatorTelephone).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 1.4)
-      this.game.add.tween(this.scene_mouth).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 3)
-      this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 2.8)
 
-      this.game.time.events.add(KeyConfig.loadingAnimationDuration + 2000, EnterTheWorld, this)
+      // Intro aniamtions set:
+      // this.scene_elevatorHuman.alpha = 0
+      // this.scene_elevatorTelephone.alpha = 0
+      // this.scene_mouth.alpha = 0
+      // this.scene_elevatorPanel.alpha = 0
+      
+      // this.game.add.tween(this.scene_elevatorHuman).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 0)
+      // this.game.add.tween(this.scene_elevatorTelephone).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 1.4)
+      // this.game.add.tween(this.scene_mouth).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 3)
+      // this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 2.8)
+      
+      
+      this.scene_elevatorHuman.fadeIn(sectionTime * 2, sectionTime * 0)
+      this.scene_elevatorTelephone.fadeIn(sectionTime * 2, sectionTime * 1)
+      this.scene_mouth.fadeIn(sectionTime * 2, sectionTime * 2.4)
+      this.scene_elevatorPanel.fadeIn(sectionTime * 2, sectionTime * 3.4)
+
+      this.game.time.events.add(KeyConfig.loadingAnimationDuration + 400, EnterTheWorld, this)
     }
     
   }
