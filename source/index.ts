@@ -895,7 +895,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
       this.duringAnimation = true
       passengers.forEach((passenger, index, array) => {
         passenger.destFloor = 65536 // To heaven, to prevent this func be called again on this passenger
-        this.children.filter((passenger: ElevatorPassenger) => {if (passenger.destFloor == 65536) {return false} else {return true}}).forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
+        this.children.filter((passenger: ElevatorPassenger) => {if (passenger.destFloor == 65536 || passenger.type != ElevatorPassengerType.Squid) {return false} else {return true}}).forEach((passenger: ElevatorPassenger, index: number, array: ElevatorPassenger[]) => {
           passenger.frame = array.length - 1 - index
           passenger.moveUp()
         })
