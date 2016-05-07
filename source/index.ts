@@ -1160,6 +1160,7 @@ class ElevatorController {
   actionBoxInteraction(action) {
     if (action.name != 'expel') {
       if (!this._enableAutomaticControl) {
+        this.dialog.clearElevatorDialogs()
         if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
           this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger: ElevatorPassenger) => {
             if (passenger.destFloor != this.indicator.currentFloor) {
