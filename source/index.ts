@@ -1120,6 +1120,13 @@ class ElevatorController {
     }
   }
   
+  questions: ElevatorPassengerLines = {
+    whichFloor: 'Which floor are you going to?',
+    howsTheWork: 'How is the work going today?',
+    whatsTheWeather: 'What\'s the weather like today?',
+    howAreYou: 'How are you?'
+  }
+  
   openActionBox() {
     if (this.duringTelephone) {
       return
@@ -1202,12 +1209,14 @@ class ElevatorController {
           var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name))) as ElevatorPassenger
           this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 40)
         }
+        this.dialog.humanNotMachineDialog(this.questions[action.name])
       }
       this.human.elevatorPassengerContainer.closePermissionFor(action.name)
     } else {
       this.expelWhenOpenDoor = true
       if (this.panelScene.doorIsOpened) {
         this.human.elevatorPassengerContainer.expelAllNormalPassengers(true)
+        this.dialog.humanNotMachineDialog('All passengers please disembark at this floor, the elevator has been requisitioned for special-use.')
       } else if(!this.panelScene.doorIsClosed) {
         this.openCloseDoorButtonPressed('open')
       }
@@ -1329,6 +1338,7 @@ class ElevatorController {
   duringOpendoorDelay = false
   
   floorReached() {
+    // If stopped
     if(this.updateIndicator()) {
       this.game.time.events.add(300, () => {
         this.elevatorDing.play()
@@ -1388,8 +1398,8 @@ class ElevatorController {
   }
   
   speakWhichFloor(passenger: ElevatorPassenger) {
-    if (Math.random() < 0.6 && (passenger.type == ElevatorPassengerType.Normal) && passenger.destFloor != this.indicator.currentFloor && passenger.speakPermission.whichFloor && !passenger.passengerAutoSpeaked) {
-      // passenger.speakPermission.whichFloor = false
+    if ((passenger.type == ElevatorPassengerType.Normal) && passenger.destFloor != this.indicator.currentFloor && passenger.speakPermission.whichFloor && !passenger.passengerAutoSpeaked) {
+      // passenger.speakPermission.whichFloor = fals
       if (!this._enableAutomaticControl) {
         this.game.time.events.add(1400, () => {
           this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
@@ -1422,7 +1432,11 @@ class ElevatorController {
           let transformed = this.human.elevatorPassengerContainer.transformPassengersAtFloor(this.hrDept, this.indicator.currentFloor)
           if(transformed.length > 0) {
             // Sometimes passengers told elevator guy directly
-            transformed.forEach(this.speakWhichFloor, this)
+            transformed.forEach((passenger) => {
+              if (Math.random() < 0.6) {
+                this.speakWhichFloor(passenger)
+              }
+            }, this)
             this.refreshActionBox()
             if (this._enableAutomaticControl) {
               this.automaticPressPanelTargets()
@@ -2103,6 +2117,8 @@ class Dialog extends Phaser.Group {
     this.updateDialog()
   }
   
+  left = false
+  
   textObject: Phaser.Text
   background: Phaser.Graphics
   arrow: Phaser.Graphics 
@@ -2132,7 +2148,9 @@ class Dialog extends Phaser.Group {
     }
     textObject.wordWrapWidth = this.backgroundWidth - Dialog.padding.x * 2
     let textBounds = textObject.getLocalBounds()
-    let dialogPosition = new Phaser.Point(this.arrowPoint.x - 10 - Dialog.arrowWidth / 2, this.arrowPoint.y - this.arrowHeight - textBounds.height - Dialog.padding.y * 2)
+    let dialogPosition = new Phaser.Point(
+      this.left ? this.arrowPoint.x + 10 - (textBounds.width + Dialog.padding.x * 2) : this.arrowPoint.x - 10 - Dialog.arrowWidth / 2
+      , this.arrowPoint.y - this.arrowHeight - textBounds.height - Dialog.padding.y * 2)
     textObject.x = dialogPosition.x + Dialog.padding.x
     textObject.y = dialogPosition.y + Dialog.padding.y + 2
     // Draw arrow
@@ -2237,9 +2255,9 @@ class DialogHost {
     return dialog
   }
 
-  autoDissmissDialog(dialog: Dialog, delay: number) {
+  autoDissmissDialog(dialog: Dialog, delay: number): Dialog {
     this.game.time.events.add(delay, () => {
-      if (!dialog.parent) {
+      if (!dialog.parent || !dialog) {
         return
       }
       if (dialog.parent.constructor.name == 'DialogArea') {
@@ -2248,17 +2266,35 @@ class DialogHost {
         dialog.parent.removeChild(dialog)
       }
     })
+    return dialog
   }
   
   clearElevatorDialogs() {
     for (var index = this.elevatorDialogArea.children.length - 1; index >= 0; index--) {
       var dialog = this.elevatorDialogArea.children[index] as Dialog
       this.elevatorDialogArea.remove(dialog)
+      this.elevatorDialogArea.updateDialogs()
     }
   }
   
   displayElevatorDialog(text: string, x: number) {
     this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3000 + text.length * 50)
+    this.elevatorDialogArea.updateDialogs()
+  }
+  
+  _humanDialogInstance: Dialog
+  humanNotMachineDialog(text: string) {
+    if (this._humanDialogInstance && this._humanDialogInstance.parent) {
+      this._humanDialogInstance.parent.removeChild(this._humanDialogInstance)
+      this._humanDialogInstance = null
+    }
+    let dialog = this.autoDissmissDialog(
+      this.displayDialog(text, new Phaser.Point(126, 100 + WhichFloor.yOffset), 100, 40)
+      , 1000 + text.length * 40
+    )
+    this._humanDialogInstance = dialog
+    dialog.left = true
+    dialog.updateDialog()
   }
   
   paradiseDialog(text: string) {
