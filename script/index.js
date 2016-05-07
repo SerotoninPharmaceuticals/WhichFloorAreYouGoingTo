@@ -1005,14 +1005,23 @@ class ElevatorController {
             if (!this._enableAutomaticControl) {
                 this.dialog.clearElevatorDialogs();
                 if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
-                    this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger) => {
+                    let whichFloorPassengers = this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor'));
+                    while (whichFloorPassengers.length > 5) {
+                        for (let index = 0; index < whichFloorPassengers.length; index++) {
+                            let passenger = whichFloorPassengers[index];
+                            if (passenger.passengerAutoSpeaked) {
+                                whichFloorPassengers.splice(index, 1);
+                            }
+                        }
+                    }
+                    whichFloorPassengers.forEach((passenger) => {
                         if (passenger.destFloor != this.indicator.currentFloor) {
                             this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40);
                         }
                     });
                 }
                 else {
-                    var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name)));
+                    let passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name)));
                     this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 40);
                 }
                 this.dialog.humanNotMachineDialog(this.questions[action.name]);
@@ -1890,7 +1899,8 @@ class DialogArea extends Phaser.Group {
         });
     }
     removeDialog(dialog) {
-        delete this.dialogs[this.dialogs.indexOf(dialog)];
+        console.log(this.dialogs.indexOf(dialog));
+        this.dialogs.splice(this.dialogs.indexOf(dialog), 1);
         this.removeChild(dialog);
         this.updateDialogs();
     }
@@ -1925,9 +1935,9 @@ class DialogHost {
         return dialog;
     }
     clearElevatorDialogs() {
-        for (var index = this.elevatorDialogArea.children.length - 1; index >= 0; index--) {
-            var dialog = this.elevatorDialogArea.children[index];
-            this.elevatorDialogArea.remove(dialog);
+        for (var index = this.elevatorDialogArea.dialogs.length - 1; index >= 0; index--) {
+            var dialog = this.elevatorDialogArea.dialogs[index];
+            this.elevatorDialogArea.removeDialog(dialog);
             this.elevatorDialogArea.updateDialogs();
         }
     }
@@ -1940,7 +1950,7 @@ class DialogHost {
             this._humanDialogInstance.parent.removeChild(this._humanDialogInstance);
             this._humanDialogInstance = null;
         }
-        let dialog = this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(126, 100 + WhichFloor.yOffset), 100, 40), 1000 + text.length * 40);
+        let dialog = this.autoDissmissDialog(this.displayDialog(text, new Phaser.Point(126, 100 + WhichFloor.yOffset), 110, 40), 1000 + text.length * 40);
         this._humanDialogInstance = dialog;
         dialog.left = true;
         dialog.updateDialog();

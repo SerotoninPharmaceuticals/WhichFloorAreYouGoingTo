@@ -1196,20 +1196,29 @@ class ElevatorController {
   
   expelWhenOpenDoor = false
   actionBoxInteraction(action) {
-    if(this.human.elevatorPassengerContainer.children.length == 0) {
+    if (this.human.elevatorPassengerContainer.children.length == 0) {
       return
     }
     if (action.name != 'expel') {
       if (!this._enableAutomaticControl) {
         this.dialog.clearElevatorDialogs()
         if (action.name == 'whichFloor' && this.emergenciesPassengerType != ElevatorPassengerType.Gift) {
-          this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')).forEach((passenger: ElevatorPassenger) => {
+          let whichFloorPassengers = this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter('whichFloor')) as ElevatorPassenger[]
+          while (whichFloorPassengers.length > 5) {
+            for (let index = 0; index < whichFloorPassengers.length; index++) {
+              let passenger = whichFloorPassengers[index]
+              if (passenger.passengerAutoSpeaked) {
+                whichFloorPassengers.splice(index, 1)
+              }
+            }
+          }
+          whichFloorPassengers.forEach((passenger: ElevatorPassenger) => {
             if (passenger.destFloor != this.indicator.currentFloor) {
               this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40)
             }
           })
         } else {
-          var passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name))) as ElevatorPassenger
+          let passenger = PickOneRandomly(this.human.elevatorPassengerContainer.children.filter(ElevatorHumanResourceDept.passengerPermittedFilter(action.name))) as ElevatorPassenger
           this.dialog.displayElevatorDialog(passenger.lines[action.name], passenger.x + 40)
         }
         this.dialog.humanNotMachineDialog(this.questions[action.name])
@@ -2230,9 +2239,8 @@ class DialogArea extends Phaser.Group {
   }
   
   removeDialog(dialog: DialogAreaSubDialog) {
-    delete this.dialogs[
-      this.dialogs.indexOf(dialog)
-    ]
+    console.log(this.dialogs.indexOf(dialog))
+    this.dialogs.splice(this.dialogs.indexOf(dialog), 1)
     this.removeChild(dialog)
     this.updateDialogs()
   }
@@ -2273,9 +2281,9 @@ class DialogHost {
   }
   
   clearElevatorDialogs() {
-    for (var index = this.elevatorDialogArea.children.length - 1; index >= 0; index--) {
-      var dialog = this.elevatorDialogArea.children[index] as Dialog
-      this.elevatorDialogArea.remove(dialog)
+    for (var index = this.elevatorDialogArea.dialogs.length - 1; index >= 0; index--) {
+      var dialog = this.elevatorDialogArea.dialogs[index] as Dialog
+      this.elevatorDialogArea.removeDialog(dialog as DialogAreaSubDialog)
       this.elevatorDialogArea.updateDialogs()
     }
   }
@@ -2292,7 +2300,7 @@ class DialogHost {
       this._humanDialogInstance = null
     }
     let dialog = this.autoDissmissDialog(
-      this.displayDialog(text, new Phaser.Point(126, 100 + WhichFloor.yOffset), 100, 40)
+      this.displayDialog(text, new Phaser.Point(126, 100 + WhichFloor.yOffset), 110, 40)
       , 1000 + text.length * 40
     )
     this._humanDialogInstance = dialog
