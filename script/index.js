@@ -684,7 +684,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
                 }
                 break;
         }
-        if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Normal && passenger.type == ElevatorPassengerType.Squid) {
+        if (passengers.filter((passenger) => { if (passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) {
             return true;
         }
         else {

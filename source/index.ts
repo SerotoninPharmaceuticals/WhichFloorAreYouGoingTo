@@ -846,7 +846,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         }
         break
     }
-    if (passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Normal && passenger.type == ElevatorPassengerType.Squid) { return true} else {return false}}).length > 0) {
+    if (passengers.filter((passenger) => { if(passenger.type == ElevatorPassengerType.Normal || passenger.type == ElevatorPassengerType.Squid) { return true} else {return false}}).length > 0) {
       this.elevatorDong.play()
     }
     return passengers
