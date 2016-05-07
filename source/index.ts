@@ -1196,6 +1196,9 @@ class ElevatorController {
   
   expelWhenOpenDoor = false
   actionBoxInteraction(action) {
+    if(this.human.elevatorPassengerContainer.children.length == 0) {
+      return
+    }
     if (action.name != 'expel') {
       if (!this._enableAutomaticControl) {
         this.dialog.clearElevatorDialogs()
