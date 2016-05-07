@@ -539,6 +539,17 @@ class ElevatorPassengerSquid extends ElevatorPassenger {
     howAreYou: true,
   }
   
+  
+  public get lines(): ElevatorPassengerLines {
+    return {
+      whichFloor: super.lines.whichFloor,
+      howsTheWork: '...',
+      whatsTheWeather: '...',
+      howAreYou: '...'
+    }
+  }
+  
+  
   constructor(game: Phaser.Game, frame: number) {
     super(game, ElevatorPassengerType.Squid, 'passengers-squid')
     this.frame = frame

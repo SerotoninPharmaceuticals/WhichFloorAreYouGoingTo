@@ -429,6 +429,14 @@ class ElevatorPassengerSquid extends ElevatorPassenger {
                 break;
         }
     }
+    get lines() {
+        return {
+            whichFloor: super.lines.whichFloor,
+            howsTheWork: '...',
+            whatsTheWeather: '...',
+            howAreYou: '...'
+        };
+    }
 }
 /**
  * ElevatorPassengerNormal
