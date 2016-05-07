@@ -770,18 +770,26 @@ class ElevatorHumanResourceDept extends Phaser.Group {
   }
 
   expelAllNormalPassengers(withAnimation: boolean = false) {
+    
+    if (withAnimation) {
+      this.duringAnimation = true
+      this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
+        this.duringAnimation = false
+      }, this)
+    }
     for (var index = this.children.length - 1; index >= 0; index--) {
       let passenger = this.children[index] as ElevatorPassenger;
       switch (passenger.type) {
       case ElevatorPassengerType.Normal:
       case ElevatorPassengerType.Squid:
         if (withAnimation) {
-          this.duringAnimation = true
-          passenger.performFeawellAnimation()
-          this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
-            this.remove(passenger, true)
-            this.duringAnimation = false
-          }, this)
+          if (passenger.destFloor < 20) {
+            passenger.destFloor = 65536
+            passenger.performFeawellAnimation()
+            this.game.time.events.add(ElevatorPassenger.animationDuration, () => {
+              this.remove(passenger, true)
+            }, this)
+          }
         } else {
           this.remove(passenger, true)
         }
@@ -2289,7 +2297,13 @@ class DialogHost {
   }
   
   displayElevatorDialog(text: string, x: number) {
-    this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3000 + text.length * 50)
+    var dialog = this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3800 + text.length * 50)
+    dialog.alpha = 0
+    this.game.time.events.add(800, () => {
+      if (dialog) {
+        dialog.alpha = 1
+      }
+    })
     this.elevatorDialogArea.updateDialogs()
   }
   
