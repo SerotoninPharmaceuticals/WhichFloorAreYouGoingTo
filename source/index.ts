@@ -1209,6 +1209,7 @@ class ElevatorController {
               let passenger = whichFloorPassengers[index]
               if (passenger.passengerAutoSpeaked) {
                 whichFloorPassengers.splice(index, 1)
+                break
               }
             }
           }
