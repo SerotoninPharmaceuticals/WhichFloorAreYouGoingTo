@@ -1229,10 +1229,10 @@ class ElevatorController {
       this.expelWhenOpenDoor = true
       if (this.panelScene.doorIsOpened) {
         this.human.elevatorPassengerContainer.expelAllNormalPassengers(true)
-        this.dialog.humanNotMachineDialog('All passengers please disembark at this floor, the elevator has been requisitioned for special-use.')
       } else if(!this.panelScene.doorIsClosed) {
         this.openCloseDoorButtonPressed('open')
       }
+      this.dialog.humanNotMachineDialog('All passengers please disembark at this floor, the elevator has been requisitioned for special-use.')
     }
   }
   
@@ -2240,7 +2240,6 @@ class DialogArea extends Phaser.Group {
   }
   
   removeDialog(dialog: DialogAreaSubDialog) {
-    console.log(this.dialogs.indexOf(dialog))
     this.dialogs.splice(this.dialogs.indexOf(dialog), 1)
     this.removeChild(dialog)
     this.updateDialogs()
