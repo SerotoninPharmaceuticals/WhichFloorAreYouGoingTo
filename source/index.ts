@@ -744,7 +744,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
 
   generateSquidInFeatureCount = 0
   generatePassengersInLoop() {
-    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 16) && this.children.length < 5) {
+    if ((Math.random() * Phaser.Timer.SECOND < this.duration / 10) && this.children.length < 5) {
       this.passengerGenerateSignal.dispatch(
         this.generatepassengersByType(ElevatorPassengerType.Normal)
       )
@@ -967,21 +967,20 @@ class ElevatorSchedule {
   
   current = 0
   schedule: ScheduleState[] = [
-    ScheduleState.gift,
     ScheduleState.managers,
+    ScheduleState.gift,
     ScheduleState.chairs,
     ScheduleState.bedman,
     ScheduleState.coffee,
     ScheduleState.credits,
   ]
   scheduleForeShadowing: number[] = [
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    // 4 + Math.floor(Math.random() * 4)
+    4 + Math.floor(Math.random() * 2),
+    4 + Math.floor(Math.random() * 2),
+    4 + Math.floor(Math.random() * 2),
+    4 + Math.floor(Math.random() * 2),
+    4 + Math.floor(Math.random() * 2),
+    4 + Math.floor(Math.random() * 2),
   ]
   
   
@@ -991,6 +990,17 @@ class ElevatorSchedule {
   
 
   constructor() {
+    if (location.search == '?test') {
+      this.scheduleForeShadowing = [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        // 4 + Math.floor(Math.random() * 4)
+      ]
+    }
   }
 
   receiveEvent(type: ScheduleEventType) {
@@ -1245,9 +1255,9 @@ class ElevatorController {
     this.panelScene.add(this.panelScene.overlayTelephone)
     this.panelScene.overlayTelephone.x = 0
     if (type as number == 1) {
-      this.panelScene.overlayTelephone.frame = 1
-    } else if(type as number == 2) {
       this.panelScene.overlayTelephone.frame = 2
+    } else if(type as number == 2) {
+      this.panelScene.overlayTelephone.frame = 1
     } else {
       this.panelScene.overlayTelephone.frame = 0
     }

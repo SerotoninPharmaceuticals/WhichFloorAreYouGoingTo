@@ -592,7 +592,7 @@ class ElevatorHumanResourceDept extends Phaser.Group {
         this.loopTimer.pause();
     }
     generatePassengersInLoop() {
-        if ((Math.random() * Phaser.Timer.SECOND < this.duration / 16) && this.children.length < 5) {
+        if ((Math.random() * Phaser.Timer.SECOND < this.duration / 10) && this.children.length < 5) {
             this.passengerGenerateSignal.dispatch(this.generatepassengersByType(ElevatorPassengerType.Normal));
         }
         if (this.generateSquidInFeatureCount > 0 && (Math.random() * Phaser.Timer.SECOND < this.duration / 5)) {
@@ -812,21 +812,31 @@ class ElevatorSchedule {
         this.commandSignal = new Phaser.Signal();
         this.current = 0;
         this.schedule = [
-            ScheduleState.gift,
             ScheduleState.managers,
+            ScheduleState.gift,
             ScheduleState.chairs,
             ScheduleState.bedman,
             ScheduleState.coffee,
             ScheduleState.credits,
         ];
         this.scheduleForeShadowing = [
-            1,
-            2,
-            2,
-            2,
-            2,
-            2,
+            4 + Math.floor(Math.random() * 2),
+            4 + Math.floor(Math.random() * 2),
+            4 + Math.floor(Math.random() * 2),
+            4 + Math.floor(Math.random() * 2),
+            4 + Math.floor(Math.random() * 2),
+            4 + Math.floor(Math.random() * 2),
         ];
+        if (location.search == '?test') {
+            this.scheduleForeShadowing = [
+                2,
+                2,
+                2,
+                2,
+                2,
+                2,
+            ];
+        }
     }
     get currentSchedule() {
         return this.schedule[this.current];
@@ -1045,10 +1055,10 @@ class ElevatorController {
         this.panelScene.add(this.panelScene.overlayTelephone);
         this.panelScene.overlayTelephone.x = 0;
         if (type == 1) {
-            this.panelScene.overlayTelephone.frame = 1;
+            this.panelScene.overlayTelephone.frame = 2;
         }
         else if (type == 2) {
-            this.panelScene.overlayTelephone.frame = 2;
+            this.panelScene.overlayTelephone.frame = 1;
         }
         else {
             this.panelScene.overlayTelephone.frame = 0;
