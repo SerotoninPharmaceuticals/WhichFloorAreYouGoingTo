@@ -899,6 +899,7 @@ class ElevatorController {
         this._leaved = false;
         this.expelWhenOpenDoor = false;
         this.emergenciesPassengerType = ElevatorPassengerType.Normal;
+        this.leaveAtZero = false;
         this.duringTelephone = false;
         this.duringOpendoorDelay = false;
         this.game = game;
@@ -987,6 +988,7 @@ class ElevatorController {
         this.mouth.mouth.onInputDown.remove(this.openActionBox, this);
         this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this);
         this.panel.controlSingal.remove(this.panelPressed, this);
+        this.panel.disableAll();
     }
     leave() {
         if (this._leaved) {
@@ -1051,6 +1053,7 @@ class ElevatorController {
     specialEvent(type) {
         console.log('Schedule received: ' + ScheduleState[type]);
         if (type == ScheduleState.credits) {
+            this.leaveAtZero = true;
             this.dayOff.play();
             this.resignFirstresponder();
             this.game.time.events.add(2000, () => {
@@ -1238,7 +1241,7 @@ class ElevatorController {
         }
         if (action == 'open') {
             this.panelScene.openDoor(() => {
-                if (this.indicator.currentFloor == 0 && this.schedule.currentSchedule == ScheduleState.credits) {
+                if (this.indicator.currentFloor == 0 && this.leaveAtZero) {
                     this.leave();
                     this.waitAndCloseDoor(Phaser.Timer.SECOND * 10);
                 }
