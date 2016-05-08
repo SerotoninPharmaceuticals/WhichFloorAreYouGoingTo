@@ -1060,6 +1060,7 @@ class ElevatorController {
   elevatorDing: Phaser.Sound
   telephonePickup: Phaser.Sound
   telephoneHangup: Phaser.Sound
+  dayOff: Phaser.Sound
   schedule: ElevatorSchedule
 
   currentFloor: number = 0
@@ -1101,6 +1102,7 @@ class ElevatorController {
     
     this.telephoneHangup = this.game.add.sound('audio-telephone-hangup', 0.3)
     this.telephonePickup = this.game.add.sound('audio-telephone-pickup', 0.5)
+    this.dayOff = this.game.add.sound('audio-day-off')
     
     this.hrDept.passengerGenerateSignal.add((passengers) => {
       this.indicator.updateWaitingPassengers(this.hrDept.children as ElevatorPassenger[])
@@ -1194,11 +1196,11 @@ class ElevatorController {
       this.action.close()
     }
     
-    this.game.time.events.add(7000, () => {
+    this.game.time.events.add(15000, () => {
       this.enableAutomaticControl()
       let credits = this.action.add(new Phaser.Sprite(this.game, 2, -8, 'credits'))
       credits.alpha = 0
-      this.game.add.tween(credits).to({alpha: 1}, 500, null, true)
+      this.game.add.tween(credits).to({alpha: 1}, 1400, null, true)
     }, this)
   }
   
@@ -1248,6 +1250,7 @@ class ElevatorController {
   specialEvent(type: ScheduleState) {
     console.log('Schedule received: ' + ScheduleState[type])
     if (type == ScheduleState.credits) {
+      this.dayOff.play()
       this.resignFirstresponder()
       this.game.time.events.add(2000, () => {
         if (!this.panel.controlButtons[0 + 1].lighted && !this._leaved) {
@@ -2113,6 +2116,13 @@ class ElevatorPanel extends Phaser.Group {
   pressByButtonNumber(buttonNumber: number) {
     this.callAll('pressByButtonNumber', null, buttonNumber)
   }
+  
+  disableAll() {
+    this.controlButtons.forEach((button) => {
+      button.inputEnabled = false
+      button.input.useHandCursor = false
+    })
+  }
 }
 
 /**
@@ -2415,6 +2425,7 @@ class WhichFloor {
     this.game.load.audio('audio-telephone-ring', WhichFloor.assetsPath('audio/telephone-ring.ogg'))
     this.game.load.audio('audio-telephone-pickup', WhichFloor.assetsPath('audio/telephone-pickup.ogg'))
     this.game.load.audio('audio-telephone-hangup', WhichFloor.assetsPath('audio/telephone-hangup.ogg'))
+    this.game.load.audio('audio-day-off', WhichFloor.assetsPath('audio/day-off.wav'))
   }
   
   scene_elevatorHuman: ElevatorHumanScene
