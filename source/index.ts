@@ -508,10 +508,10 @@ class ElevatorPassenger extends Phaser.Sprite {
   }
   
   
-  performIntroAnimation() {
+  performIntroAnimation(delay = 0) {
     this.grayTint = 0x000001
     this.alpha = 0
-    this.game.add.tween(this).to({alpha: 1, grayTint: 0x0000ff}, ElevatorPassenger.animationDuration, Phaser.Easing.Cubic.In, true)
+    this.game.add.tween(this).to({alpha: 1, grayTint: 0x0000ff}, ElevatorPassenger.animationDuration, Phaser.Easing.Cubic.In, true, delay)
   }
   
   performFeawellAnimation() {
@@ -708,6 +708,10 @@ class ElevatorPassengerCoffee extends ElevatorPassenger {
     this.frame = Math.floor(Math.random() * 6)
     this.waitingFloor = -1
     this.anchor = new Phaser.Point(1,1)
+  }
+  
+  performIntroAnimation() {
+    super.performIntroAnimation(Math.floor(Math.random() * 1000))
   }
 }
 
