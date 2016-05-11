@@ -456,17 +456,17 @@ class ElevatorPassenger extends Phaser.Sprite {
       whichFloor: ((): string => {
           switch (this.destFloor) {
           case 0:
-            return 'Ground'
+            return 'Ground floor'
           case 1:
-            return 'First'
+            return 'First floor'
           case 2:
-            return 'Second'
+            return 'Second floor'
           case 3:
-            return 'Third'
+            return 'Third floor'
           default:
-            return this.destFloor + 'th'
+            return this.destFloor + 'th' + (Math.random() > 0.5 ? '' : ' floor')
           }
-        })() + PickOneRandomly([' floor, please', ' floor']),
+        })() + PickOneRandomly([', please', '']),
       howsTheWork: PickOneRandomly([
         'It\'s going fine',
         'thanks, As usual',
