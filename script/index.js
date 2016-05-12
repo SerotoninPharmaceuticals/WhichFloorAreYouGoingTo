@@ -2089,9 +2089,9 @@ class WhichFloor {
             // this.game.add.tween(this.scene_elevatorTelephone).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 1.4)
             // this.game.add.tween(this.scene_mouth).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 3)
             // this.game.add.tween(this.scene_elevatorPanel).to({alpha: 1}, sectionTime * 2.2, null, true, sectionTime * 2.8)
-            this.scene_elevatorHuman.fadeIn(sectionTime * 2, sectionTime * 0);
-            this.scene_elevatorTelephone.fadeIn(sectionTime * 2, sectionTime * 1);
-            this.scene_mouth.fadeIn(sectionTime * 2, sectionTime * 2.4);
+            this.scene_elevatorHuman.fadeIn(sectionTime * 2, sectionTime * 0.75);
+            this.scene_elevatorTelephone.fadeIn(sectionTime * 2, sectionTime * 1.65);
+            this.scene_mouth.fadeIn(sectionTime * 2, sectionTime * 2.5);
             this.scene_elevatorPanel.fadeIn(sectionTime * 2, sectionTime * 3.4);
         }
     }
