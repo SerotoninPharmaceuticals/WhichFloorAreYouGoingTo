@@ -1262,7 +1262,7 @@ class ElevatorController {
       this.leaveAtZero = true
       this.dayOff.play()
       this.resignFirstresponder()
-      this.game.time.events.add(2000, () => {
+      this.game.time.events.add(2500, () => {
         if (!this.panel.controlButtons[0 + 1].lighted && !this._leaved) {
           this.panelPressed(0)
         }
