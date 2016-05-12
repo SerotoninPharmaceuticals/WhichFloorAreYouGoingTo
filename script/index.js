@@ -992,6 +992,9 @@ class ElevatorController {
         this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this);
         this.panel.controlSingal.remove(this.panelPressed, this);
         this.panel.disableAll();
+        this.panelScene.openButton.inputEnabled = false;
+        this.panelScene.closeButton.inputEnabled = false;
+        this.mouth.mouth.inputEnabled = false;
     }
     leave() {
         if (this._leaved) {

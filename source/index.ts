@@ -1187,6 +1187,9 @@ class ElevatorController {
     this.panelScene.openCloseSignal.remove(this.openCloseDoorButtonPressed, this)
     this.panel.controlSingal.remove(this.panelPressed, this)
     this.panel.disableAll()
+    this.panelScene.openButton.inputEnabled = false
+    this.panelScene.closeButton.inputEnabled = false
+    this.mouth.mouth.inputEnabled = false
   }
   
   _leaved = false
@@ -1893,8 +1896,8 @@ class ElevatorPanelScene extends ComicWindow  {
   earpiece: Phaser.Sprite
   overlayTelephone: Phaser.Sprite
   
-  private openButton: Phaser.Button
-  private closeButton: Phaser.Button
+  openButton: Phaser.Button
+  closeButton: Phaser.Button
   private spoon: Phaser.Sprite
   paradises: Phaser.Sprite
   
