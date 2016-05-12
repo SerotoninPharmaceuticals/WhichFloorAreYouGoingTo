@@ -1179,6 +1179,8 @@ class ElevatorController {
   enableAutomaticControl() {
     this._enableAutomaticControl = true
     this.automaticPressPanelTargets()
+    // Daemon
+    this.game.time.events.loop(500, this.updateIndicator, this)
   }
   
   resignFirstresponder() {
