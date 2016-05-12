@@ -540,7 +540,7 @@ class ElevatorPassengerBedMan extends ElevatorPassenger {
     }
     get lines() {
         return {
-            whichFloor: 'I thought it has already been notified, it\'s 10th then',
+            whichFloor: 'I thought it has already been informed, it\'s 10th then',
             howsTheWork: 'Improving. Slightly, no, noticeably better than yesterday',
             whatsTheWeather: 'Changing. Mostly cloudy, showers around, getting colder',
             howAreYou: '3.5 out of 5, I could complain, but I\'m not going to',
@@ -843,12 +843,12 @@ class ElevatorSchedule {
             ScheduleState.credits,
         ];
         this.scheduleForeShadowing = [
-            4 + Math.floor(Math.random() * 2),
-            4 + Math.floor(Math.random() * 2),
-            4 + Math.floor(Math.random() * 2),
-            4 + Math.floor(Math.random() * 2),
-            4 + Math.floor(Math.random() * 2),
-            4 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
+            3 + Math.floor(Math.random() * 2),
         ];
         if (location.search == '?test') {
             this.scheduleForeShadowing = [
@@ -1137,7 +1137,7 @@ class ElevatorController {
                     text = 'Several office chairs need to be relocated from 11th to 4th floor.\nExact number unknown, so get an empty elevator prepared.';
                     break;
                 case ScheduleState.bedman:
-                    text = 'An employee from the 3rd floor needs to go to floor 10. He used to be an employee of the month or something,\nand his current situation is a little bit of, special, so get the elevator empty for him. ';
+                    text = 'An employee from the 3rd floor needs to go to floor 10. He used to be an employee of the month or something,\nbut his current situation is a little bit of ... special. Better get the elevator empty for him. ';
                     break;
                 case ScheduleState.coffee:
                     text = 'Daily rations are ready at the basement, get them dispatched at each floor, except the ground floor. Enjoy.';
