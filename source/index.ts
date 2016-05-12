@@ -2448,6 +2448,9 @@ class WhichFloor {
   group_elevatorHumanResourceDept: ElevatorHumanResourceDept
 
   create() {
+    
+    self.document.getElementById('loader').remove()
+    
     this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game))
     this.scene_elevatorHuman.origin = new Origin(40, 25 + WhichFloor.yOffset, 400, 212)
     

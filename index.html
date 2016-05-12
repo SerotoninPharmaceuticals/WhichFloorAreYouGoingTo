@@ -14,14 +14,78 @@
     canvas {
       margin: 0 auto;
     }
-    .font-loader {
+    #loader {
       font-family: "Marker Felt";
-      opacity: 0;
-      position: absolute;
+      font-size: 20px;
+      text-align: center;
+      margin-top: 300px;
+    }
+    @keyframes blink-first {
+      0% {
+        opacity: 0;
+      }
+      24% {
+        opacity: 0;
+      }
+      25% {
+        opacity: 1;
+      }
+      99% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    @keyframes blink-second {
+      0% {
+        opacity: 0;
+      }
+      49% {
+        opacity: 0;
+      }
+      50% {
+        opacity: 1;
+      }
+      99% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    @keyframes blink-third {
+      0% {
+        opacity: 0;
+      }
+      74% {
+        opacity: 0;
+      }
+      75% {
+        opacity: 1;
+      }
+      99% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    #loader>.dot {
+      margin-left: 2px;
+    }
+    #loader>.dot.first {
+      animation: blink-first 0.8s infinite;
+    }
+    #loader>.dot.second {
+      animation: blink-second 0.8s infinite;
+    }
+    #loader>.dot.third {
+      animation: blink-third 0.8s infinite;
     }
   </style>
 </head>
 <body>
-  <div class="font-loader">Marker Felt</div>
+  <div id="loader">Loading<span class="dot first">.</span><span class="dot second">.</span><span class="dot third">.</span></div>
 </body>
 </html>

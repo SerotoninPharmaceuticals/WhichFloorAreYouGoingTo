@@ -2055,6 +2055,7 @@ class WhichFloor {
         this.game.load.audio('audio-day-off', WhichFloor.assetsPath('audio/day-off.wav'));
     }
     create() {
+        self.document.getElementById('loader').remove();
         this.scene_elevatorHuman = this.game.world.add(new ElevatorHumanScene(this.game));
         this.scene_elevatorHuman.origin = new Origin(40, 25 + WhichFloor.yOffset, 400, 212);
         this.scene_elevatorIndicator = this.game.world.add(new ElevatorIndicatorScene(this.game));
