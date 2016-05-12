@@ -506,7 +506,7 @@ class ElevatorPassengerGift extends ElevatorPassenger {
         return {
             whichFloor: '2nd floor, 9th floor, and then 12th floor',
             howsTheWork: 'Couldn\'t be better, see? Delivering the company\'s gratitude to our employees',
-            whatsTheWeather: 'Bad, the basement is almost flooded, ruined half of our prepared gift',
+            whatsTheWeather: 'Bad, the basement is almost flooded, ruined half of our prepared gifts',
             howAreYou: 'Good as a good gift manager',
         };
     }
