@@ -1206,7 +1206,7 @@ class ElevatorController {
     
     this.game.time.events.add(15000, () => {
       this.enableAutomaticControl()
-      let credits = this.action.add(new Phaser.Sprite(this.game, 2, -8, 'credits'))
+      let credits = this.action.add(new Phaser.Sprite(this.game, 1, -8, 'credits'))
       credits.alpha = 0
       this.game.add.tween(credits).to({alpha: 1}, 1400, null, true)
     }, this)
