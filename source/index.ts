@@ -1378,9 +1378,11 @@ class ElevatorController {
         this.elevatorDing.play()
       }, this)
       if (this.human.elevatorPassengerContainer.passengersSpeakPermissionSummary.whichFloor && this.emergenciesPassengerType == ElevatorPassengerType.Normal && !this._enableAutomaticControl) {
-        this.human.elevatorPassengerContainer.children.forEach(this.speakWhichFloor, this)
         this.human.elevatorPassengerContainer.children.forEach((passenger: ElevatorPassenger) => {
-          passenger.passengerAutoSpeaked = true
+          if (!this.dialog.elevatorDialogArea.hasDialogAt(passenger.x + 40)) {
+            this.speakWhichFloor(passenger)
+            passenger.passengerAutoSpeaked = true
+          }
         })
       }
       this.duringOpendoorDelay = true
@@ -2271,6 +2273,16 @@ class DialogArea extends Phaser.Group {
     this.dialogs.splice(this.dialogs.indexOf(dialog), 1)
     this.removeChild(dialog)
     this.updateDialogs()
+  }
+  
+  hasDialogAt(x: number) {
+    for (var index = 0; index < this.dialogs.length; index++) {
+      var dialog = this.dialogs[index];
+      if (dialog.xPosition == x) {
+        return true
+      }
+    }
+    return false
   }
 }
 
