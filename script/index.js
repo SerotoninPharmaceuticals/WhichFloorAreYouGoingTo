@@ -1236,9 +1236,7 @@ class ElevatorController {
         if ((passenger.type == ElevatorPassengerType.Normal) && passenger.destFloor != this.indicator.currentFloor && passenger.speakPermission.whichFloor && !passenger.passengerAutoSpeaked) {
             // passenger.speakPermission.whichFloor = fals
             if (!this._enableAutomaticControl) {
-                this.game.time.events.add(1400, () => {
-                    this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40);
-                }, this);
+                this.dialog.displayElevatorDialog(passenger.lines.whichFloor, passenger.x + 40, 2200);
             }
         }
     }
@@ -1978,10 +1976,10 @@ class DialogHost {
             this.elevatorDialogArea.updateDialogs();
         }
     }
-    displayElevatorDialog(text, x) {
+    displayElevatorDialog(text, x, delay = 800) {
         var dialog = this.autoDissmissDialog(this.elevatorDialogArea.displayDialog(text, x), 3800 + text.length * 50);
         dialog.alpha = 0;
-        this.game.time.events.add(800, () => {
+        this.game.time.events.add(delay, () => {
             if (dialog) {
                 dialog.alpha = 1;
             }
