@@ -1633,7 +1633,7 @@ class ElevatorIndicatorScene extends ComicWindow {
 }
 ElevatorIndicatorScene.elevatorHeight = 15;
 ElevatorIndicatorScene.containerWidth = 29;
-ElevatorIndicatorScene.containerPadding = 3;
+ElevatorIndicatorScene.containerPadding = 5;
 /**
  * ElevatorPanelScene
  */
